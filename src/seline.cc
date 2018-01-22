@@ -2,7 +2,7 @@
 
 Seline::Seline(){
 
-  std::string ee_model = "robotiq85_base_link.pcd";
+  std::string ee_model = "robotiq_85_base_link_fine.pcd";
   seline_pkg_dir_ = ros::package::getPath("seline");
   std::string path_to_model = seline_pkg_dir_ + "/models/" + ee_model;
 
@@ -19,18 +19,32 @@ Seline::Seline(){
   Eigen::Affine3f seed_transform;
   seed_transform.matrix() = Eigen::MatrixXf::Identity(4, 4);
 
+
+  pcl::PointCloud<pcl::PointNormal>::Ptr pn (new pcl::PointCloud<pcl::PointNormal>);
+  copyPointCloud(*original_model_cloud_, *pn);
+
+  pcl::VoxelGrid<pcl::PointNormal> grid;
+  grid.setLeafSize (0.0075, 0.0075, 0.0075);
+  grid.setInputCloud (pn);
+  grid.filter (*pn);
+  copyPointCloud(*pn, *original_model_cloud_);
+
+
+
+
   // TODO: A test... display the original pointcloud a little bit...
   seed_transform.translation() = Eigen::Vector3f(1.0, 0.2, 1.0);
 
   std::cout << seed_transform.matrix() << "\n";
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::transformPointCloud(*original_model_cloud_, *transformed_cloud, seed_transform);
+  transformed_cloud_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::transformPointCloud(*original_model_cloud_, *transformed_cloud_, seed_transform);
 
-  std::cout << "Transformed cloud: " << transformed_cloud->size() << " points\n";
+  std::cout << "Transformed cloud: " << transformed_cloud_->size() << " points\n";
+
 
   publishPointCloudXYZ(pub_original_cloud_, *original_model_cloud_, camera_optical_frame_);
-  publishPointCloudXYZ(pub_transformed_cloud_, *transformed_cloud, camera_optical_frame_);
+  publishPointCloudXYZ(pub_transformed_cloud_, *transformed_cloud_, camera_optical_frame_);
 
   source_cloud_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
   target_cloud_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
@@ -48,7 +62,13 @@ void Seline::publishPointCloudXYZ(ros::Publisher pub, pcl::PointCloud<pcl::Point
   sensor_msgs::PointCloud2 cloud_msg;
   pcl_conversions::fromPCL(pcl_pc2, cloud_msg);
   cloud_msg.header.frame_id = frame_id;
+  std::cout << "Publish in " << frame_id << "\n";
   pub.publish(cloud_msg);
+}
+
+void Seline::runOnce(){
+  publishPointCloudXYZ(pub_original_cloud_, *original_model_cloud_, camera_optical_frame_);
+  publishPointCloudXYZ(pub_transformed_cloud_, *transformed_cloud_, camera_optical_frame_);
 }
 
 int main(int argc, char** argv){
@@ -56,7 +76,7 @@ int main(int argc, char** argv){
   Seline *node = new Seline();
   ros::Rate *loop_rate = new ros::Rate(kDefaultLoopRate);
   while (ros::ok()){
-    //node->runOnce();
+    node->runOnce();
     loop_rate->sleep();
     ros::spinOnce();
   }

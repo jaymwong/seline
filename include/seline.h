@@ -14,21 +14,27 @@
 #include <pcl/PCLPointCloud2.h>
 #include <sensor_msgs/PointCloud2.h>
 
+#include <pcl/filters/voxel_grid.h>
+
 
 #define kDefaultLoopRate 1
 
 #define kModelLoadErrorCode -1
+#define kDownSampleModelLeafSize 0.005
 
 class Seline{
   public:
     Seline();
     ~Seline();
 
+    void runOnce();
+
   private:
     ros::NodeHandle nh_;
 
     std::string seline_pkg_dir_;
     pcl::PointCloud<pcl::PointXYZ>::Ptr original_model_cloud_; // cloud as loaded from .pcd; no transform applied
+    pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud_;
 
     ros::Publisher pub_original_cloud_, pub_transformed_cloud_;
 
