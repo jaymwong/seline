@@ -34,6 +34,8 @@ class Seline{
 
     std::string camera_optical_frame_;
 
+    pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud_, target_cloud_; // the model cloud, and the scene cloud
+
     void publishPointCloudXYZ(ros::Publisher pub, pcl::PointCloud<pcl::PointXYZ> &pcl_cloud, std::string frame_id);
 };
 

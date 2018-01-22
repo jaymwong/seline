@@ -29,9 +29,11 @@ Seline::Seline(){
 
   std::cout << "Transformed cloud: " << transformed_cloud->size() << " points\n";
 
-
   publishPointCloudXYZ(pub_original_cloud_, *original_model_cloud_, camera_optical_frame_);
   publishPointCloudXYZ(pub_transformed_cloud_, *transformed_cloud, camera_optical_frame_);
+
+  source_cloud_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  target_cloud_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
 
 }
