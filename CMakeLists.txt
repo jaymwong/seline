@@ -8,6 +8,7 @@ find_package(catkin REQUIRED
   pcl_ros
   pcl_conversions
   sensor_msgs
+  transform_conversions
 )
 
 find_package(PCL 1.7 REQUIRED)
