@@ -44,9 +44,7 @@ Seline::Seline(){
   ros::Duration(1.0).sleep(); // Wait for TFs to update a bit
 
 }
-Seline::~Seline(){
-
-}
+Seline::~Seline(){}
 
 
 void Seline::inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input){
@@ -207,11 +205,10 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
 
 // Create the world_to_camera and camera_to_ee transformations
 void Seline::lookupTransformations(){
-  geometry_msgs::TransformStamped transformStamped;
-  transformStamped = tf_buffer_.lookupTransform(world_frame_, camera_optical_frame_, ros::Time(0));
-  world_to_camera_ = tf2::transformToEigen(transformStamped).matrix();
-  transformStamped = tf_buffer_.lookupTransform(camera_optical_frame_, ee_frame_, ros::Time(0));
-  camera_to_ee_ = tf2::transformToEigen(transformStamped).matrix();
+  world_to_camera_ = tf2::transformToEigen(tf_buffer_.lookupTransform(world_frame_, camera_optical_frame_, ros::Time(0))).matrix();
+  camera_to_ee_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, ee_frame_, ros::Time(0))).matrix();
+  ee_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(ee_frame_, world_frame_, ros::Time(0))).matrix();
+
 }
 
 void Seline::runOnce(){

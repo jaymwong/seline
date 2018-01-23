@@ -28,7 +28,7 @@ for filename in files:
 
 
         x_avg = reduce(lambda x1, x2: x1 + x2, x) / len(x)
-        y_avg = 0
+        y_avg = reduce(lambda x1, x2: x1 + x2, y) / len(y)
         z_avg = 0
 
         for i in xrange(0, len(x)):

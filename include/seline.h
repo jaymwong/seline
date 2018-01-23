@@ -67,7 +67,7 @@ class Seline{
     bool has_seed_, has_point_cloud_;
 
     pcl::PointXYZ seeded_point_;
-    Eigen::Matrix4d camera_to_ee_, world_to_camera_, camera_to_icp_;
+    Eigen::Matrix4d camera_to_ee_, world_to_camera_, camera_to_icp_, ee_to_world_;
 
     ros::Publisher pub_original_cloud_, pub_transformed_cloud_, pub_segmented_cloud_, pub_icp_out_;
     ros::Subscriber sub_point_cloud_;
