@@ -33,6 +33,7 @@
 #define kDefaultLoopRate 25
 
 #define kModelLoadErrorCode -1
+#define kICPIterations 1
 #define kDownSampleModelLeafSize 0.005  // in meters
 #define kDefaultPointCloudLeafSize 0.005 // in meters
 #define kGripperLength 0.15748  // in meters from the base to the finger tip
@@ -41,7 +42,10 @@
 // To be used as a radius on which we grab points off the scene cloud. Too large
 // will pull unnecessary points, too small and we may not be able to fall into
 // the basin of convergence for ICP, due to lacking sufficient scene points
-#define kEpsilonRegionOnGripper 0.02
+#define kEpsilonRegionOnGripper 0.05
+
+#define kEndEffectorCropTheta 10 // in degrees
+#define kEndEffectorCropMaxY 0.2 // in meters
 
 class Seline{
   public:

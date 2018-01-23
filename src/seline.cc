@@ -41,7 +41,7 @@ Seline::Seline(){
 
   publishPointCloudXYZ(pub_original_cloud_, *original_model_cloud_, camera_optical_frame_);
 
-  ros::Duration(1.0).sleep();
+  ros::Duration(1.0).sleep(); // Wait for TFs to update a bit
 
 }
 Seline::~Seline(){
@@ -74,13 +74,19 @@ void Seline::downsampleInitialModelCloud(){
   copyPointCloud(*pn, *original_model_cloud_);
 
   // Passthrough filter to crop out just the front surface of the gripper
-  splicePointCloudByAxis(original_model_cloud_, "y", 0.0, 0.2);
+  splicePointCloudByAxis(original_model_cloud_, "y", 0.0, kEndEffectorCropMaxY);
+
 
   // Rotate the cloud to splice along the base_link of the gripper at angle theta
-  Eigen::Matrix4d transform = transform_conversions::euler_matrix(0, -30.0*M_PI/180.0, 0);
+  Eigen::Matrix4d transform = transform_conversions::euler_matrix(0, -kEndEffectorCropTheta*M_PI/180.0, 0) * transform_conversions::translation_matrix(0.0, 0.0, -kGripperLength/2.0);
   pcl::PointCloud<pcl::PointXYZ>::Ptr tf_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::transformPointCloud(*original_model_cloud_, *tf_cloud, transform);
-  splicePointCloudByAxis(tf_cloud, "y", 0.0, 0.2);
+  splicePointCloudByAxis(tf_cloud, "y", 0.0, kEndEffectorCropMaxY);
+  copyPointCloud(*tf_cloud, *original_model_cloud_);
+
+  transform = transform_conversions::euler_matrix(0, kEndEffectorCropTheta*M_PI/180.0, 0) * transform_conversions::translation_matrix(0.0, 0.0, kGripperLength/2.0);
+  tf_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::transformPointCloud(*original_model_cloud_, *tf_cloud, transform);
   copyPointCloud(*tf_cloud, *original_model_cloud_);
 
 }
@@ -152,7 +158,7 @@ pcl::PointCloud<pcl::PointXYZ> Seline::segmentEndEffectorFromSceneUsingSeed(Eige
   // Perform a nearest neightbor search with the search point
   std::vector<int> pointIdxRadiusSearch;
   std::vector<float> pointRadiusSquaredDistance;
-  float radius = kGripperLength/2.0 + 0.02;
+  float radius = kGripperLength/2.0 + kEpsilonRegionOnGripper;
   pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
   kdtree.setInputCloud (input_cloud_xyz_);
 
@@ -179,13 +185,11 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
-  double kIterations = 1; // TODO: obviously move this
   pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-  icp.setMaximumIterations (kIterations);
+  icp.setMaximumIterations (kICPIterations);
   icp.setInputSource (source_cloud);
   icp.setInputTarget (target_cloud);
   icp.align (*cloud_out);
-  icp.setMaximumIterations (1);  // We set this variable to 1 for the next time we will call .align () function
 
   if (icp.hasConverged ()) {
     // std::cout << "\nICP has converged, score is " << icp.getFitnessScore () << std::endl;
