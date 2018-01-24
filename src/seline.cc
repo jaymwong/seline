@@ -131,6 +131,7 @@ void Seline::processSeed(Eigen::Matrix4d matrix){
 
   // Do not try to do segmentation and ICP if we don't have the scene cloud yet
   if (!has_point_cloud_){
+    std::cout << "No point cloud received, skipping processing seed!\n";
     return;
   }
 
