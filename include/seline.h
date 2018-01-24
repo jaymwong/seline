@@ -29,6 +29,8 @@
 
 #include <geometry_msgs/TransformStamped.h>
 #include <transform/conversions.h>
+#include <transform_conversions/HomogeneousTransform.h>
+#include <std_srvs/Trigger.h>
 
 #define kDefaultLoopRate 25
 
@@ -36,16 +38,6 @@
 #define kICPIterations 1
 #define kDownSampleModelLeafSize 0.005  // in meters
 #define kDefaultPointCloudLeafSize 0.005 // in meters
-#define kGripperLength 0.15748  // in meters from the base to the finger tip
-
-// How much epsilon to add on top of the gripper size (e.g. kGripperLength/2.0)
-// To be used as a radius on which we grab points off the scene cloud. Too large
-// will pull unnecessary points, too small and we may not be able to fall into
-// the basin of convergence for ICP, due to lacking sufficient scene points
-#define kEpsilonRegionOnGripper 0.05
-
-#define kEndEffectorCropTheta 10 // in degrees
-#define kEndEffectorCropMaxY 0.2 // in meters
 
 class Seline{
   public:
@@ -63,13 +55,17 @@ class Seline{
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_xyz_;
 
-
     bool has_seed_, has_point_cloud_;
+    ros::ServiceServer srv_trigger_new_seed_;
+
+    double gripper_length_;
+    double ee_crop_theta_, ee_crop_max_y_, epsilon_region_on_gripper_;
 
     pcl::PointXYZ seeded_point_;
     Eigen::Matrix4d camera_to_ee_, camera_to_icp_, ee_to_world_;
 
     ros::Publisher pub_original_cloud_, pub_transformed_cloud_, pub_segmented_cloud_, pub_icp_out_;
+    ros::Publisher pub_est_world_frame_;
     ros::Subscriber sub_point_cloud_;
 
     std::string ee_model_file_, point_cloud_topic_;
@@ -94,6 +90,8 @@ class Seline{
 
 
     void inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input);
+    bool triggerSeedCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp);
+
 
 };
 

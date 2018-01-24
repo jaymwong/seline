@@ -9,3 +9,14 @@
 
 # Raw point cloud topic name
 /seline/point_cloud_topic: "/camera/depth_registered/points"
+
+# End effector model and initial cropping parameters
+/seline/gripper_length: 0.15748   # in meters from the base to the finger tip
+/seline/ee_crop_theta: 10         # in degrees
+/seline/ee_crop_max_y: 0.2        # in meters
+
+# How much epsilon to add on top of the gripper size (e.g. gripper_length/2.0)
+# To be used as a radius on which we grab points off the scene cloud. Too large
+# will pull unnecessary points, too small and we may not be able to fall into
+# the basin of convergence for ICP, due to lacking sufficient scene points
+/seline/epsilon_region_on_gripper: 0.05        # in meters
