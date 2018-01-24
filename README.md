@@ -21,9 +21,9 @@ Finally, to obtain the new camera to world transformation, do
 ```
 cd seline/scripts; python process_data.py;
 ```
-__TODO:__ We are currently writing a procedure to automatically send the arm to various locations in the scene, for each location estimate the new world frame, and perform a regression over the set of estimated frames. 
+__TODO:__ We are currently writing a procedure to automatically send the arm to various locations in the scene, for each location estimate the new world frame, and perform a regression over the set of estimated frames.
 
 ## Examples
 Given the observed segmented scene pointcloud in green, `seline` estimates the end effector pose using the forward kinematics as a seed (blue) and performs point to point ICP with the segmented scene cloud (green). This results in the estimated camera to end effector transformation. Since we know the forward kinematics, we can compute the end effector to world tranform (as described by the robot's URDF), and back out the estimated new world frame.
-![example1](images/ur3_robotiq85_ex1.png)
-![example2](images/ur3_robotiq85_ex2.png)
+![example1](images/ur3_robotiq85_ex1.png | width=150)
+![example2](images/ur3_robotiq85_ex2.png | width=150)
