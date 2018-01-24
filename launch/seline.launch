@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+
+  <rosparam command="load" file="$(find seline)/config/ur3_robotiq85.yaml" />
+  <node name="seline" pkg="seline" type="seline" output="screen"/>
+
+</launch>

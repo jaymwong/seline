@@ -67,11 +67,12 @@ class Seline{
     bool has_seed_, has_point_cloud_;
 
     pcl::PointXYZ seeded_point_;
-    Eigen::Matrix4d camera_to_ee_, world_to_camera_, camera_to_icp_, ee_to_world_;
+    Eigen::Matrix4d camera_to_ee_, camera_to_icp_, ee_to_world_;
 
     ros::Publisher pub_original_cloud_, pub_transformed_cloud_, pub_segmented_cloud_, pub_icp_out_;
     ros::Subscriber sub_point_cloud_;
 
+    std::string ee_model_file_, point_cloud_topic_;
     std::string camera_optical_frame_, ee_frame_, world_frame_;
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud_, target_cloud_; // the model cloud and the scene cloud
@@ -81,7 +82,8 @@ class Seline{
     tf2_ros::TransformListener *tf_listener_;
     tf::TransformBroadcaster br_;
 
-    void lookupTransformations();
+    void lookupKnownTransformations();
+    void processEstimatedTransformations();
     void downsampleInitialModelCloud();
     void splicePointCloudByAxis(pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud, std::string axis, double min, double max);
 

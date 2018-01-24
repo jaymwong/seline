@@ -1,0 +1,11 @@
+
+# Filename for the pcd end effector model file; located in seline/models/
+/seline/ee_model_file: "robotiq_85_base_link_fine.pcd"
+
+# Frame names to be used by seline's transform lookup
+/seline/world_frame: "world"
+/seline/camera_optical_frame: "camera_rgb_optical_frame"
+/seline/ee_frame: "tool0"
+
+# Raw point cloud topic name
+/seline/point_cloud_topic: "/camera/depth_registered/points"
