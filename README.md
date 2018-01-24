@@ -40,3 +40,4 @@ NOTE, in reality the `world_frame` is actually the robot's `base_link`; this REA
 ## Examples
 Given the observed segmented scene pointcloud in green, `seline` estimates the end effector pose using the forward kinematics as a seed (blue) and performs point to point ICP with the segmented scene cloud (green). This results in the estimated camera to end effector transformation. Since we know the forward kinematics, we can compute the end effector to world tranform (as described by the robot's URDF), and back out the estimated new world frame.
 ![example](images/ur3_robotiq85_ex_combined.png)
+![example2](images/ur3_robotiq85_result.png)
