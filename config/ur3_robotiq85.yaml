@@ -3,8 +3,10 @@
 /seline/ee_model_file: "robotiq_85_base_link_fine.pcd"
 
 # Frame names to be used by seline's transform lookup
+# NOTE, in reality the world_frame is actually the robot's base_link
 /seline/world_frame: "world"
 /seline/camera_optical_frame: "camera_rgb_optical_frame"
+/seline/camera_link_name: "camera_link"
 /seline/ee_frame: "tool0"
 
 # Raw point cloud topic name
