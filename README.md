@@ -23,7 +23,7 @@ The following are dependencies for `seline`,
  * [transform_conversions](https://github.com/jaymwong/transform_conversions) - a convenience ROS package for transforms
 
 ## Usage
-Currently, `seline` requires just a single end effector pose for obtaining good eye-hand. First, drive the end effector towards the center of the workspace (or image plane) with the gripper surface being perpendicular to the camera optical frame's Z-axis. See the example images in the next section. Next run `seline` to acquire a new `camera_link` to `world` transform.
+Currently, `seline` requires just a single end effector pose for obtaining good eye-hand. First, drive the end effector towards the center of the workspace (or image plane) with the gripper surface being perpendicular to the camera optical frame's Z-axis. As shown in the examples in the previous section. Next run `seline` to acquire a new `camera_link` to `world` transform.
 
 An example configuration file is in `seline/config`. For your setting, create a new configuration file and edit `seline/launch/seline.launch` to use this new configuration file. Then simply do,
 ```
