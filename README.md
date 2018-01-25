@@ -1,5 +1,5 @@
 # seline
-The purpose of `seline` is to use model-based pose estimation to estimate the transformation between the base of the robot and the camera frame. This is done by estimating the pose of the end effector and backing out the transform to estimate the new base frame. The key insight is that a sufficiently good seed is required for pose estimation, meaning that `seline` is used to *refine* the current eye-hand transform, not to produce one from scratch.
+The purpose of `seline` is to use model-based pose estimation to estimate the transformation between the base of the robot and the camera frame. This is done by estimating the pose of the end effector in camera frame. Then using the known relative transformations between the end effector and the base of the robot to estimate the transformation between the `camera_link` and the `world`. The key insight is that a sufficiently good seed is required for pose estimation, meaning that `seline` is used to *refine* the current eye-hand transform, not to produce one from scratch.
 
 ## Assumptions
  1. The robot has sufficiently good forward kinematics.
@@ -7,7 +7,7 @@ The purpose of `seline` is to use model-based pose estimation to estimate the tr
  3. A `.pcd` model of the end effector is available.
 
 ## Procedure
-How `seline` works is as follows. The forward kinematics of the robot is used to obtain a seed location of where the robot believes its end effector is relative to the camera. An epsilon ball is created around this initial seed. We go through the raw point cloud and obtain all points in the scene within this epsilon ball and treat this as the target cloud for registration. We then seed the model (the cloud corresponding to the end effector) at where pose given by forward kinematics and do point to point ICP between the end effector model and the segmented scene cloud. Doing so obtains an estimated camera to end effector transform which is used to estimate where the transformation for base of the robot.
+How `seline` works is as follows. The forward kinematics of the robot is used to obtain a seed location of where the robot believes its end effector is relative to the camera. An epsilon ball is created around this initial seed. We then pull out points from the raw scene point cloud that fall within this epsilon ball and treat the resulting "segmented" point cloud as the target for registration. We seed the model (the cloud corresponding to the end effector) at the pose given by forward kinematics and do point to point ICP between the end effector model and the segmented scene cloud. Doing so obtains an estimated camera to end effector transform which is used to estimate the transformation between the `camera_link` and `world`.
 
 ## Requirements
 The following are dependencies for `seline`,
@@ -35,7 +35,7 @@ This will print out the transformation in URDF friendly format. For example,
 __TODO:__ We are currently writing a procedure to automatically send the arm to various locations in the scene, for each location estimate the new world frame, and perform a regression over the set of estimated frames.
 
 
-NOTE, in reality the `world_frame` is actually the robot's `base_link`; this README is using them as if they are interchangable since `seline` was originally designed for a robot with a fixed base.  
+__NOTE.__ In reality the `world_frame` is described here is actually the robot's `base_link`; this README is using them as if they are interchangable since `seline` was originally designed for a robot with a fixed base.
 
 ## Examples
 Given the observed segmented scene pointcloud in green, `seline` estimates the end effector pose using the forward kinematics as a seed (blue) and performs point to point ICP with the segmented scene cloud (green). This results in the estimated camera to end effector transformation. Since we know the forward kinematics, we can compute the end effector to world tranform (as described by the robot's URDF), and back out the estimated new world frame.
