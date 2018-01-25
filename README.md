@@ -3,6 +3,12 @@ The purpose of `seline` is to use model-based pose estimation to estimate the tr
 
 Currently, `seline` achieves on the order of 0.6cm of max error in a workspace of about a meter.
 
+## Examples
+Given the observed segmented scene pointcloud in green, `seline` estimates the end effector pose using the forward kinematics as a seed (blue) and performs point to point ICP with the segmented scene cloud (green). This results in the estimated camera to end effector transformation. Since we know the forward kinematics, we can compute the end effector to world tranform (as described by the robot's URDF), and back out the estimated new world frame.
+![example](images/ur3_robotiq85_ex_combined.png)
+![example2](images/ur3_robotiq85_result.png)
+
+
 ## Assumptions
  1. The robot has sufficiently good forward kinematics.
  2. A decent seed is available, meaning that the current URDF for the robot must have a connected tree that has both the camera and the base of the robot. And that the current eye-hand achieves, say less than 5-10cm of error.
@@ -40,9 +46,5 @@ This will print out the transformation in URDF friendly format. For example,
 ## Notes
 __Multiple End Effector Poses + Least Sqares Minimization.__ This is currently under works. We are currently writing a procedure to automatically send the end effector to various locations in the scene, for each location estimate the new world frame, and perform a regression over the set of estimated frames.
 
-__Fixed-base Robotic Arms.__ In reality the `world_frame` is described here is actually the robot's `base_link`; this README is using them as if they are interchangable since `seline` was originally designed for a robot with a fixed base. For mobile systems, the `world_frame` in the configuration file should refer to the robot's `base_link`. 
+__Fixed-base Robotic Arms.__ In reality the `world_frame` is described here is actually the robot's `base_link`; this README is using them as if they are interchangable since `seline` was originally designed for a robot with a fixed base. For mobile systems, the `world_frame` in the configuration file should refer to the robot's `base_link`.
 
-## Examples
-Given the observed segmented scene pointcloud in green, `seline` estimates the end effector pose using the forward kinematics as a seed (blue) and performs point to point ICP with the segmented scene cloud (green). This results in the estimated camera to end effector transformation. Since we know the forward kinematics, we can compute the end effector to world tranform (as described by the robot's URDF), and back out the estimated new world frame.
-![example](images/ur3_robotiq85_ex_combined.png)
-![example2](images/ur3_robotiq85_result.png)
