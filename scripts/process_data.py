@@ -1,3 +1,5 @@
+#!/usr/bin/env python 
+
 import rospy
 from transform_conversions.msg import HomogeneousTransform
 from transform_conversions.conversions import *
