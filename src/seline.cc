@@ -210,9 +210,16 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
 }
 
 
-void Seline::lookupKnownTransformations(){
-  camera_to_ee_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, ee_frame_, ros::Time(0))).matrix();
-  ee_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(ee_frame_, world_frame_, ros::Time(0))).matrix();
+bool Seline::lookupKnownTransformations(){
+  try{
+    camera_to_ee_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, ee_frame_, ros::Time(0))).matrix();
+    ee_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(ee_frame_, world_frame_, ros::Time(0))).matrix();
+    return true;
+  }
+  catch(...){
+    std::cout << "Unable to look up transformations!\n";
+    return false;
+  }
 }
 
 
@@ -231,9 +238,10 @@ void Seline::processEstimatedTransformations(){
 }
 
 void Seline::runOnce(){
-  lookupKnownTransformations();
-  processSeed(camera_to_ee_);
-  processEstimatedTransformations();
+  if (lookupKnownTransformations()){
+    processSeed(camera_to_ee_);
+    processEstimatedTransformations();
+  }
 }
 
 int main(int argc, char** argv){

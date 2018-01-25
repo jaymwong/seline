@@ -1,8 +1,9 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 
-import rospy
+import rospy, rospkg
 from transform_conversions.msg import HomogeneousTransform
 from transform_conversions.conversions import *
+import yaml, os
 
 class SelineProcessData:
     def __init__(self):
@@ -13,6 +14,11 @@ class SelineProcessData:
         self.camera_optical_frame = rospy.get_param("/seline/camera_optical_frame")
         self.world_frame = rospy.get_param("/seline/world_frame")
         self.camera_link_name = rospy.get_param("/seline/camera_link_name")
+        self.output_file = rospy.get_param("/seline/processed_calibration_filename")
+        self.output_file = rospkg.RosPack().get_path("seline") +"/results/" + self.output_file
+
+        print self.output_file
+
 
     def tf_callback(self, msg):
         (xyz, quat) = self.listener.lookupTransform(self.camera_optical_frame, self.camera_link_name, rospy.Time(0))
@@ -39,7 +45,6 @@ class SelineProcessData:
         # print 'xyz:', xyz[0], ' ', xyz[1], ' ', xyz[2]
         # print 'rpy:', rpy[0], ' ', rpy[1], ' ', rpy[2]
 
-
         print '<link name=\"'+self.camera_link_name+'\"/>'
         print '<joint name=\"camera_to_robot\" type=\"fixed\">'
         print '  <parent link=\"'+self.camera_link_name+'\"/>'
@@ -47,7 +52,8 @@ class SelineProcessData:
         print '  <origin xyz=\"'+str(xyz[0])+' '+str(xyz[1])+' '+str(xyz[2])+'\" rpy=\"'+str(rpy[0])+' '+str(rpy[1])+' '+str(rpy[2])+'\" />'
         print '</joint>'
 
-
+        with open(self.output_file, 'w') as outfile:
+            yaml.dump(cam_base_to_world.flatten(), outfile, default_flow_style=False)
 
 
 if __name__ == '__main__':

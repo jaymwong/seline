@@ -22,3 +22,6 @@
 # will pull unnecessary points, too small and we may not be able to fall into
 # the basin of convergence for ICP, due to lacking sufficient scene points
 /seline/epsilon_region_on_gripper: 0.05        # in meters
+
+
+/seline/processed_calibration_filename: "ur3_robotiq85.yaml"

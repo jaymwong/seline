@@ -78,7 +78,7 @@ class Seline{
     tf2_ros::TransformListener *tf_listener_;
     tf::TransformBroadcaster br_;
 
-    void lookupKnownTransformations();
+    bool lookupKnownTransformations();
     void processEstimatedTransformations();
     void downsampleInitialModelCloud();
     void splicePointCloudByAxis(pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud, std::string axis, double min, double max);
