@@ -4,7 +4,7 @@ The purpose of `seline` is to use model-based pose estimation to estimate the tr
 Currently, `seline` achieves on the order of 0.6cm of max error in a workspace of about a meter.
 
 ## Examples
-Given the observed segmented scene pointcloud in green, `seline` estimates the end effector pose using the forward kinematics as a seed (blue) and performs point to point ICP with the segmented scene cloud (green). This results in the estimated camera to end effector transformation. Since we know the forward kinematics, we can compute the end effector to world tranform (as described by the robot's URDF), and back out the estimated new world frame.
+Given the observed segmented scene point cloud in green, `seline` estimates the end effector pose using the forward kinematics as a seed (blue) and performs point to point ICP with the segmented scene cloud (green). This results in the estimated camera to end effector transformation. Since we know the forward kinematics, we can compute the end effector to world tranform (as described by the robot's URDF), and back out the estimated new world frame.
 ![example](images/ur3_robotiq85_ex_combined.png)
 ![example2](images/ur3_robotiq85_result.png)
 
@@ -42,9 +42,13 @@ This will print out the transformation in URDF friendly format. For example,
   <origin xyz="1.5460137711 -0.0991888599915 0.295267672157" rpy="-0.546406834079 -0.00742609072367 1.53930854082" />
 </joint>
 ```
+A final convience launch file will publish the calibrated transformation between the `camera_link` and the `base_link` (or `world`) directly from `seline`,
+```
+roslaunch seline tf_broadcaster.launch
+```
 
 ## Notes
-__Multiple End Effector Poses + Least Sqares Minimization.__ This is currently under works. We are currently writing a procedure to automatically send the end effector to various locations in the scene, for each location estimate the new world frame, and perform a regression over the set of estimated frames.
+__Multiple End Effector Poses + Least Squares Minimization.__ This is currently under works. We are currently writing a procedure to automatically send the end effector to various locations in the scene, for each location estimate the new world frame, and perform a regression over the set of estimated frames.
 
 __Fixed-base Robotic Arms.__ In reality the `world_frame` is described here is actually the robot's `base_link`; this README is using them as if they are interchangable since `seline` was originally designed for a robot with a fixed base. For mobile systems, the `world_frame` in the configuration file should refer to the robot's `base_link`.
 
