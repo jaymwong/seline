@@ -11,6 +11,8 @@ Seline::Seline(){
   nh_.getParam("/seline/ee_crop_theta", ee_crop_theta_);
   nh_.getParam("/seline/ee_crop_max_y", ee_crop_max_y_);
   nh_.getParam("/seline/epsilon_region_on_gripper", epsilon_region_on_gripper_);
+  nh_.getParam("/seline/crop_world_plane", crop_world_plane_);
+  nh_.getParam("/seline/crop_world_plane_height", crop_world_plane_height_);
 
   // Load the model from the models directory
   seline_pkg_dir_ = ros::package::getPath("seline");
@@ -62,6 +64,25 @@ void Seline::inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input){
   sor.setLeafSize(kDefaultPointCloudLeafSize, kDefaultPointCloudLeafSize, kDefaultPointCloudLeafSize);
   sor.filter(cloud_filtered);
   pcl::fromPCLPointCloud2(cloud_filtered, *input_cloud_xyz_);
+
+  if (crop_world_plane_ && lookupKnownTransformations()){
+    // First transform the input cloud into the world frame, perform a crop over the Z-axis
+    // and lastly transform the cropped cloud back into the camera_optical_frame
+    pcl::PointCloud<pcl::PointXYZ>::Ptr tf_world_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::transformPointCloud(*input_cloud_xyz_, *tf_world_cloud, world_to_camera_);
+
+    // Remove all point under the plane
+    pcl::PassThrough<pcl::PointXYZ> pass;
+    pass.setInputCloud(tf_world_cloud);
+    pass.setFilterFieldName("z");
+    pass.setFilterLimits(crop_world_plane_height_, 5.0);
+    pass.filter(*result_cloud);
+    copyPointCloud(*result_cloud, *tf_world_cloud);
+    pcl::transformPointCloud(*tf_world_cloud, *input_cloud_xyz_, camera_to_world_);
+  }
+
+
   has_point_cloud_ = true;
 }
 
@@ -214,6 +235,8 @@ bool Seline::lookupKnownTransformations(){
   try{
     camera_to_ee_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, ee_frame_, ros::Time(0))).matrix();
     ee_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(ee_frame_, world_frame_, ros::Time(0))).matrix();
+    world_to_camera_ = tf2::transformToEigen(tf_buffer_.lookupTransform(world_frame_, camera_optical_frame_, ros::Time(0))).matrix();
+    camera_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, world_frame_, ros::Time(0))).matrix();
     return true;
   }
   catch(...){
