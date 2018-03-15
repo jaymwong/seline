@@ -12,6 +12,12 @@
 # Raw point cloud topic name
 /seline/point_cloud_topic: "/camera/depth_registered/points"
 
+# Whether to transform the raw point cloud into the current world frame and
+# then apply a pass through filter to crop out the points under the robot
+/seline/crop_world_plane: true
+/seline/crop_world_plane_height: 0.033    # in meters
+
+
 # End effector model and initial cropping parameters
 /seline/gripper_length: 0.15748   # in meters from the base to the finger tip
 /seline/ee_crop_theta: 10         # in degrees

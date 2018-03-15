@@ -55,14 +55,16 @@ class Seline{
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_xyz_;
 
-    bool has_seed_, has_point_cloud_;
+    bool has_seed_, has_point_cloud_, crop_world_plane_;
     ros::ServiceServer srv_trigger_new_seed_;
 
     double gripper_length_;
     double ee_crop_theta_, ee_crop_max_y_, epsilon_region_on_gripper_;
+    double crop_world_plane_height_;
 
     pcl::PointXYZ seeded_point_;
     Eigen::Matrix4d camera_to_ee_, camera_to_icp_, ee_to_world_;
+    Eigen::Matrix4d world_to_camera_, camera_to_world_;
 
     ros::Publisher pub_original_cloud_, pub_transformed_cloud_, pub_segmented_cloud_, pub_icp_out_;
     ros::Publisher pub_est_world_frame_;
