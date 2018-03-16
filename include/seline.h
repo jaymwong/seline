@@ -32,6 +32,8 @@
 #include <transform_conversions/HomogeneousTransform.h>
 #include <std_srvs/Trigger.h>
 
+#include <seline/GetEndEffectorOffset.h>
+
 #define kDefaultLoopRate 25
 
 #define kModelLoadErrorCode -1
@@ -39,9 +41,13 @@
 #define kDownSampleModelLeafSize 0.005  // in meters
 #define kDefaultPointCloudLeafSize 0.005 // in meters
 
+#define kSearchEpsilonOnTracking 0.045 // in meters
+#define kSearchTrackingIterations 5
+#define kOffsetVectorSize 3
+
 class Seline{
   public:
-    Seline();
+    Seline(std::string seline_mode);
     ~Seline();
 
     void runOnce();
@@ -56,22 +62,26 @@ class Seline{
     pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_xyz_;
 
     bool has_seed_, has_point_cloud_, crop_world_plane_;
-    ros::ServiceServer srv_trigger_new_seed_;
+    ros::ServiceServer srv_trigger_new_seed_, srv_get_ee_offset_;
 
     double gripper_length_;
     double ee_crop_theta_, ee_crop_max_y_, epsilon_region_on_gripper_;
     double crop_world_plane_height_;
+
+    Eigen::Vector3d observed_offset_;
+    Eigen::Matrix4d observed_offset_matrix_;
 
     pcl::PointXYZ seeded_point_;
     Eigen::Matrix4d camera_to_ee_, camera_to_icp_, ee_to_world_;
     Eigen::Matrix4d world_to_camera_, camera_to_world_;
 
     ros::Publisher pub_original_cloud_, pub_transformed_cloud_, pub_segmented_cloud_, pub_icp_out_;
-    ros::Publisher pub_est_world_frame_;
+    ros::Publisher pub_est_world_frame_, pub_seg_tracking_cloud_;
     ros::Subscriber sub_point_cloud_;
 
     std::string ee_model_file_, point_cloud_topic_;
     std::string camera_optical_frame_, ee_frame_, world_frame_;
+    std::string seline_mode_;
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud_, target_cloud_; // the model cloud and the scene cloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr icp_cloud_;
@@ -87,12 +97,16 @@ class Seline{
 
     void processSeed(Eigen::Matrix4d matrix);
     void publishPointCloudXYZ(ros::Publisher pub, pcl::PointCloud<pcl::PointXYZ> &pcl_cloud, std::string frame_id);
-    pcl::PointCloud<pcl::PointXYZ> segmentEndEffectorFromSceneUsingSeed(Eigen::MatrixXd seed_transform);
+    pcl::PointCloud<pcl::PointXYZ> segmentEndEffectorFromSceneUsingSeed(Eigen::MatrixXd seed_transform, float radius);
     pcl::PointCloud<pcl::PointXYZ> doIterativeRegistration(pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud);
 
+    Eigen::Vector3d computePointCloudMedian(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+    Eigen::Vector3d computePointCloudMedian(std::vector<double> cluster_pt_x, std::vector<double> cluster_pt_y, std::vector<double> cluster_pt_z);
 
     void inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input);
     bool triggerSeedCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp);
+    bool getEndEffectorOffsetCallback(seline::GetEndEffectorOffset::Request &req, seline::GetEndEffectorOffset::Response &resp);
+
 
 
 };

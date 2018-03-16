@@ -1,6 +1,6 @@
 #include "seline.h"
 
-Seline::Seline(){
+Seline::Seline(std::string seline_mode){
   // Obtain the frame names from the parameter server
   nh_.getParam("/seline/ee_model_file", ee_model_file_);
   nh_.getParam("/seline/ee_frame", ee_frame_);
@@ -14,6 +14,8 @@ Seline::Seline(){
   nh_.getParam("/seline/crop_world_plane", crop_world_plane_);
   nh_.getParam("/seline/crop_world_plane_height", crop_world_plane_height_);
 
+  seline_mode_ = seline_mode;
+
   // Load the model from the models directory
   seline_pkg_dir_ = ros::package::getPath("seline");
   std::string path_to_model = seline_pkg_dir_ + "/models/" + ee_model_file_;
@@ -25,12 +27,15 @@ Seline::Seline(){
   // Create debug publishers and the subscriber to the raw point cloud
   pub_original_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/original_cloud", 1);
   pub_transformed_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/transformed_cloud", 1);
+  pub_seg_tracking_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/segmented_tracking_cloud", 1);
   pub_segmented_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/segmented_cloud", 1);
   pub_icp_out_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/icp_out", 1);
   pub_est_world_frame_ = nh_.advertise<transform_conversions::HomogeneousTransform>("/seline/est_world_frame", 1);
+
   sub_point_cloud_ = nh_.subscribe(point_cloud_topic_, 1, &Seline::inputCloudCallback, this);
   tf_listener_ = new tf2_ros::TransformListener(tf_buffer_);
   srv_trigger_new_seed_ = nh_.advertiseService("/seline/trigger_seed", &Seline::triggerSeedCallback, this);
+  srv_get_ee_offset_ = nh_.advertiseService("/seline/get_ee_offset", &Seline::getEndEffectorOffsetCallback, this);
 
   camera_to_ee_ = Eigen::MatrixXd::Identity(4, 4);
   camera_to_icp_ = Eigen::MatrixXd::Identity(4, 4);
@@ -82,11 +87,10 @@ void Seline::inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input){
     pcl::transformPointCloud(*tf_world_cloud, *input_cloud_xyz_, camera_to_world_);
   }
 
-
   has_point_cloud_ = true;
 }
 
-// Downsample the initial model cloud loaded from the pcd; The reason we crop the mdoel cloud
+// Downsample the initial model cloud loaded from the pcd; The reason we crop the model cloud
 // is that ICP will fall into local minima if the points on the model is greather than the
 // points of the scene cloud. For this reason, we splice the model cloud along the Z-axis,
 // (e.g. taking only points along y from y_min = 0.0, to y_max = ee_crop_max_y_). Next,
@@ -118,7 +122,6 @@ void Seline::downsampleInitialModelCloud(){
   copyPointCloud(*tf_cloud, *original_model_cloud_);
 }
 
-
 // Passthrough filter to crop out just the front surface of the gripper
 void Seline::splicePointCloudByAxis(pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud, std::string axis, double min, double max){
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
@@ -130,6 +133,7 @@ void Seline::splicePointCloudByAxis(pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud
   copyPointCloud(*cloud_filtered, *pt_cloud);
 }
 
+// Helper function to directly publish a point cloud under the publisher with desired frame_id
 void Seline::publishPointCloudXYZ(ros::Publisher pub, pcl::PointCloud<pcl::PointXYZ> &pcl_cloud, std::string frame_id){
   pcl::PCLPointCloud2 pcl_pc2;
   pcl::toPCLPointCloud2(pcl_cloud, pcl_pc2);
@@ -139,7 +143,6 @@ void Seline::publishPointCloudXYZ(ros::Publisher pub, pcl::PointCloud<pcl::Point
   pub.publish(cloud_msg);
 }
 
-
 void Seline::processSeed(Eigen::Matrix4d matrix){
   Eigen::Affine3d seed_transform; // This transform is from the camera to the base of the gripper
   seed_transform.matrix() = matrix;
@@ -148,7 +151,6 @@ void Seline::processSeed(Eigen::Matrix4d matrix){
   transformed_cloud_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::transformPointCloud(*original_model_cloud_, *transformed_cloud_, seed_transform);
   publishPointCloudXYZ(pub_transformed_cloud_, *transformed_cloud_, camera_optical_frame_);
-  //std::cout << "Transformed cloud: " << transformed_cloud_->size() << " points\n";
 
   // Do not try to do segmentation and ICP if we don't have the scene cloud yet
   if (!has_point_cloud_){
@@ -157,26 +159,64 @@ void Seline::processSeed(Eigen::Matrix4d matrix){
   }
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr segmented_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(seed_transform.matrix());
-  publishPointCloudXYZ(pub_segmented_cloud_, *segmented_cloud, camera_optical_frame_);
 
-  // Seed the ICP solution using the transformed cloud and its transformation
-  if (!has_seed_){
-    copyPointCloud(*transformed_cloud_, *icp_cloud_);
-    camera_to_icp_ = seed_transform.matrix();
-    has_seed_ = true;
+  // Perform radius search using the seeded gripper location
+  if (seline_mode_ == "calibrate"){
+    Eigen::MatrixXd gripper_center = seed_transform.matrix() * transform_conversions::translation_matrix(0, 0, gripper_length_/2.0);
+    transform_conversions::publish_matrix_as_tf(br_, gripper_center , camera_optical_frame_, "gripper_center");
+    *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(gripper_center, gripper_length_/2.0 + epsilon_region_on_gripper_);
+    publishPointCloudXYZ(pub_segmented_cloud_, *segmented_cloud, camera_optical_frame_);
+
+    // Seed the ICP solution using the transformed cloud and its transformation
+    if (!has_seed_){
+      copyPointCloud(*transformed_cloud_, *icp_cloud_);
+      camera_to_icp_ = seed_transform.matrix();
+      has_seed_ = true;
+    }
+
+    // Actually do the iterative registration step
+    *icp_cloud_ = doIterativeRegistration(icp_cloud_, segmented_cloud);
   }
 
-  // Actually do the iterative registration step
-  *icp_cloud_ = doIterativeRegistration(icp_cloud_, segmented_cloud);
+  if (seline_mode_ == "track"){
+    // Now compute the estimated error in the registration to the end effector
+    // Note, this is meant to be used after the calibration is registered back into
+    // the TF tree. Notably, we use this functionality to do, mid-grasp corrections
+    // (e.g. scenarios where the desired end effector position is off, yet we can observe
+    // and estimate the error and accommodate the offset).
+    *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(seed_transform.matrix(), kSearchEpsilonOnTracking);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr tf_world_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::transformPointCloud(*segmented_cloud, *tf_world_cloud, world_to_camera_);
+
+    if (tf_world_cloud->points.size() == 0) { return; }
+
+    // Determine the offset between the desired end effector position and the observed
+    // end effector position given by the median of the extracted point cloud
+    Eigen::Affine3d desired_ee_pose;
+    desired_ee_pose.matrix() = ee_to_world_.inverse();
+    Eigen::Affine3d observed_ee_pose = desired_ee_pose;
+
+    for (int i = 0; i < kSearchTrackingIterations; i++){
+      observed_offset_ = computePointCloudMedian(tf_world_cloud) - desired_ee_pose.translation();
+      observed_ee_pose.translation() = desired_ee_pose.translation() + observed_offset_;
+
+      Eigen::Matrix4d adjusted_camera_seed = world_to_camera_.inverse() * observed_ee_pose.matrix();
+      *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(adjusted_camera_seed, kSearchEpsilonOnTracking);
+      pcl::transformPointCloud(*segmented_cloud, *tf_world_cloud, world_to_camera_);
+    }
+
+    // Be wary of the full position: the position facing the camera (in our case y), may be
+    // nonsense since the median of the point cloud refers to the surface of the observed points,
+    // therefore seline is not aware of the depth component.
+    transform_conversions::publish_matrix_as_tf(br_, observed_ee_pose.matrix() , world_frame_, "observed_ee_pose");
+    publishPointCloudXYZ(pub_seg_tracking_cloud_, *tf_world_cloud, world_frame_);
+  }
 }
 
-
-// Perform radius search using the seeded gripper location
-pcl::PointCloud<pcl::PointXYZ> Seline::segmentEndEffectorFromSceneUsingSeed(Eigen::MatrixXd seed_transform){
-  Eigen::MatrixXd gripper_center = seed_transform * transform_conversions::translation_matrix(0, 0, gripper_length_/2.0);
-  transform_conversions::publish_matrix_as_tf(br_, gripper_center , camera_optical_frame_, "gripper_center");
-  auto translation = gripper_center.col(3); // Pull off the translation component
+// Segments the end effector point cloud by using the translation component of the transformation
+// provided and with nearest neighbor radius search
+pcl::PointCloud<pcl::PointXYZ> Seline::segmentEndEffectorFromSceneUsingSeed(Eigen::MatrixXd seed_transform, float radius){
+  auto translation = seed_transform.col(3); // Pull off the translation component
   pcl::PointXYZ search_point;
   search_point.x = translation[0];
   search_point.y = translation[1];
@@ -185,7 +225,6 @@ pcl::PointCloud<pcl::PointXYZ> Seline::segmentEndEffectorFromSceneUsingSeed(Eige
   // Perform a nearest neightbor search with the search point
   std::vector<int> pointIdxRadiusSearch;
   std::vector<float> pointRadiusSquaredDistance;
-  float radius = gripper_length_/2.0 + epsilon_region_on_gripper_;
   pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
   kdtree.setInputCloud (input_cloud_xyz_);
 
@@ -202,10 +241,43 @@ pcl::PointCloud<pcl::PointXYZ> Seline::segmentEndEffectorFromSceneUsingSeed(Eige
   return *segmented_cloud;
 }
 
+// Computes the median of a point cloud
+Eigen::Vector3d Seline::computePointCloudMedian(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
+  std::vector<double> cloud_x, cloud_y, cloud_z;
+  for (int i = 0; i < cloud->points.size(); i++){
+    pcl::PointXYZ pt = cloud->points[i];
+    cloud_x.push_back(pt.x);
+    cloud_y.push_back(pt.y);
+    cloud_z.push_back(pt.z);
+  }
+  return computePointCloudMedian(cloud_x, cloud_y, cloud_z);
+}
+
+Eigen::Vector3d Seline::computePointCloudMedian(std::vector<double> cluster_pt_x, std::vector<double> cluster_pt_y, std::vector<double> cluster_pt_z){
+  Eigen::Vector3d median;
+  sort(cluster_pt_x.begin(), cluster_pt_x.end());
+  sort(cluster_pt_y.begin(), cluster_pt_y.end());
+  sort(cluster_pt_z.begin(), cluster_pt_z.end());
+
+  median(0) = cluster_pt_x.at(cluster_pt_x.size()/2);
+  median(1) = cluster_pt_y.at(cluster_pt_y.size()/2);
+  median(2) = cluster_pt_z.at(cluster_pt_z.size()/2);
+  return median;
+}
+
 
 bool Seline::triggerSeedCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp){
   has_seed_ = false;
   std::cout << "Successfully reset seed!\n";
+  return true;
+}
+
+bool Seline::getEndEffectorOffsetCallback(seline::GetEndEffectorOffset::Request &req, seline::GetEndEffectorOffset::Response &resp){
+  resp.frame_id = world_frame_;
+
+  for (int i = 0; i < kOffsetVectorSize; i++){
+    resp.offset[i] = observed_offset_(i);
+  }
   return true;
 }
 
@@ -269,7 +341,7 @@ void Seline::runOnce(){
 
 int main(int argc, char** argv){
   ros::init(argc, argv, "seline");
-  Seline *node = new Seline();
+  Seline *node = new Seline(argv[1]);
   ros::Rate *loop_rate = new ros::Rate(kDefaultLoopRate);
   while (ros::ok()){
     node->runOnce();
