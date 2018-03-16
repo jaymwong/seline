@@ -5,19 +5,33 @@ add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED
   roscpp
+  rospy
   pcl_ros
   pcl_conversions
+  std_msgs
   sensor_msgs
   transform_conversions
+  message_generation
 )
 
 find_package(PCL 1.7 REQUIRED)
 find_package(Eigen3 REQUIRED COMPONENTS system)
 
+
+add_service_files(DIRECTORY srv
+  FILES
+  GetEndEffectorOffset.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES seline
-#  CATKIN_DEPENDS other_catkin_pkg
+   CATKIN_DEPENDS  roscpp rospy std_msgs message_generation
    DEPENDS system_lib Eigen3
 )
 

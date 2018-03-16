@@ -1,4 +1,6 @@
 # seline
+`seline` is a solution to obtaining eye-hand calibration without the use of AR-tags. For this reason, it provides the ability to "recalibrate" or adjust manipulation goals mid-grasp, since it operates directly on the end effector, rather than on an external piece of hardware (e.g. an AR-tag) attached to the end effector.
+
 The purpose of `seline` is to use model-based pose estimation to estimate the transformation between the base of the robot and the camera frame. This is first done by estimating the pose of the robot's end effector in the camera optical frame. Then using the known relative transformations between the end effector and the base of the robot, transformation between the `camera_link` and the `world` is obtained. The key insight is that a sufficiently good seed is required for pose estimation, meaning that `seline` is used to *refine* the current eye-hand transform, not to produce one from scratch.
 
 Currently, `seline` achieves on the order of 0.6cm of max error in a workspace of about a meter.
@@ -33,7 +35,7 @@ Finally, to obtain the new camera to world transformation, do
 ```
 cd seline/scripts; python process_data.py;
 ```
-This will print out the transformation in URDF friendly format. For example, 
+This will print out the transformation in URDF friendly format. For example,
 ```
 <link name="camera_link"/>
 <joint name="camera_to_robot" type="fixed">
@@ -51,4 +53,3 @@ roslaunch seline tf_broadcaster.launch
 __Multiple End Effector Poses + Least Squares Minimization.__ This is currently under works. We are currently writing a procedure to automatically send the end effector to various locations in the scene, for each location estimate the new world frame, and perform a regression over the set of estimated frames.
 
 __Fixed-base Robotic Arms.__ In reality the `world_frame` is described here is actually the robot's `base_link`; this README is using them as if they are interchangable since `seline` was originally designed for a robot with a fixed base. For mobile systems, the `world_frame` in the configuration file should refer to the robot's `base_link`.
-
