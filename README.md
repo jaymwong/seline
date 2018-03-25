@@ -22,7 +22,7 @@ How `seline` works is as follows. The forward kinematics of the robot is used to
 ## Requirements
 The following are dependencies for `seline`,
  * Robot Operating System (ROS), Point Cloud Library (PCL), Eigen
- * [transform_conversions](https://github.com/jaymwong/transform_conversions) - a convenience ROS package for transforms
+ * [athena](https://github.com/jaymwong/athena) - a convenience ROS package for transforms
 
 ## Usage
 Currently, `seline` requires just a single end effector pose for obtaining good eye-hand. First, drive the end effector towards the center of the workspace (or image plane) with the gripper surface being perpendicular to the camera optical frame's Z-axis. As shown in the examples in the previous section. Next run `seline` to acquire a new `camera_link` to `world` transform.
