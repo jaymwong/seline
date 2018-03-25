@@ -1,34 +1,14 @@
 #ifndef SELINE_H
 #define SELINE_H
 
-#include <ros/ros.h>
-#include <ros/package.h>
-
-#include <Eigen/Core>
-
-#include <pcl/common/transforms.h>
-#include <pcl/conversions.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/PCLPointCloud2.h>
-#include <sensor_msgs/PointCloud2.h>
-
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/point_cloud.h>
-#include <pcl/kdtree/kdtree_flann.h>
-
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/registration/icp.h>
+#include <athena/pointcloud/utils.h>
+#include <athena/transform/conversions.h>
 
 #include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
 #include <geometry_msgs/TransformStamped.h>
-#include <transform/conversions.h>
+
 #include <transform_conversions/HomogeneousTransform.h>
 #include <std_srvs/Trigger.h>
 
@@ -96,12 +76,8 @@ class Seline{
     void splicePointCloudByAxis(pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud, std::string axis, double min, double max);
 
     void processSeed(Eigen::Matrix4d matrix);
-    void publishPointCloudXYZ(ros::Publisher pub, pcl::PointCloud<pcl::PointXYZ> &pcl_cloud, std::string frame_id);
     pcl::PointCloud<pcl::PointXYZ> segmentEndEffectorFromSceneUsingSeed(Eigen::MatrixXd seed_transform, float radius);
     pcl::PointCloud<pcl::PointXYZ> doIterativeRegistration(pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud);
-
-    Eigen::Vector3d computePointCloudMedian(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
-    Eigen::Vector3d computePointCloudMedian(std::vector<double> cluster_pt_x, std::vector<double> cluster_pt_y, std::vector<double> cluster_pt_z);
 
     void inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input);
     bool triggerSeedCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp);

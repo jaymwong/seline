@@ -11,6 +11,7 @@ find_package(catkin REQUIRED
   std_msgs
   sensor_msgs
   transform_conversions
+  pointcloud_conversions
   message_generation
 )
 
