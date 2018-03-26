@@ -19,7 +19,8 @@
 
 
 # End effector model and initial cropping parameters
-/seline/gripper_length: 0.15748   # in meters from the base to the finger tip
+# /seline/gripper_length: 0.15748   # in meters from the base to the finger tip
+
 /seline/ee_crop_theta: 10         # in degrees
 /seline/ee_crop_max_y: 0.2        # in meters
 

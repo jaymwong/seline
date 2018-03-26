@@ -32,7 +32,7 @@ generate_messages(
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES seline
-   CATKIN_DEPENDS  roscpp rospy std_msgs message_generation
+   CATKIN_DEPENDS  roscpp rospy std_msgs message_generation pointcloud_conversions transform_conversions
    DEPENDS system_lib Eigen3
 )
 
