@@ -23,7 +23,6 @@
 
 #define kSearchEpsilonOnTracking 0.045 // in meters
 #define kMaxCropDistance 5.0  // in meters
-#define kSearchTrackingIterations 5
 #define kOffsetVectorSize 3
 
 class Seline{

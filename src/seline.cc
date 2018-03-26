@@ -190,21 +190,21 @@ void Seline::processSeed(Eigen::Matrix4d matrix){
     desired_ee_pose.matrix() = ee_to_world_.inverse();
     Eigen::Affine3d observed_ee_pose = desired_ee_pose;
 
-    for (int i = 0; i < kSearchTrackingIterations; i++){
-      PointCloudProperties cloud_props = pointcloud_utils::computePointCloudMinMax(tf_world_cloud);
-      Eigen::Vector3d median = pointcloud_utils::computePointCloudMedian(tf_world_cloud);
 
-      // The offset in the x direction is directly the difference detween the cloud's median and the desired ee translation
-      observed_offset_ = median - desired_ee_pose.translation();
+    PointCloudProperties cloud_props = pointcloud_utils::computePointCloudMinMax(tf_world_cloud);
+    Eigen::Vector3d median = pointcloud_utils::computePointCloudMedian(tf_world_cloud);
 
-      // The offset in the y direction is the surface of the point cloud offset by the width of the gripper
-      observed_offset_.y() = cloud_props.max_point.y - gripper_to_surface_;
+    // The offset in the x direction is directly the difference detween the cloud's median and the desired ee translation
+    observed_offset_ = median - desired_ee_pose.translation();
 
-      observed_ee_pose.translation() = desired_ee_pose.translation() + observed_offset_;
-      Eigen::Matrix4d adjusted_camera_seed = world_to_camera_.inverse() * observed_ee_pose.matrix();
-      *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(adjusted_camera_seed, kSearchEpsilonOnTracking);
-      pcl::transformPointCloud(*segmented_cloud, *tf_world_cloud, world_to_camera_);
-    }
+    // The offset in the y direction is the surface of the point cloud offset by the width of the gripper
+    observed_offset_.y() = (cloud_props.max_point.y - gripper_to_surface_) - desired_ee_pose.translation().y();
+
+    observed_ee_pose.translation() = desired_ee_pose.translation() + observed_offset_;
+    // Eigen::Matrix4d adjusted_camera_seed = world_to_camera_.inverse() * observed_ee_pose.matrix();
+    // *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(adjusted_camera_seed, kSearchEpsilonOnTracking);
+    // pcl::transformPointCloud(*segmented_cloud, *tf_world_cloud, world_to_camera_);
+
 
     transform_conversions::publish_matrix_as_tf(br_, observed_ee_pose.matrix() , world_frame_, "observed_ee_pose");
     pointcloud_utils::publishPointCloudXYZ(pub_seg_tracking_cloud_, *tf_world_cloud, world_frame_);
