@@ -22,6 +22,7 @@
 #define kDefaultPointCloudLeafSize 0.005 // in meters
 
 #define kSearchEpsilonOnTracking 0.045 // in meters
+#define kMaxCropDistance 5.0  // in meters
 #define kSearchTrackingIterations 5
 #define kOffsetVectorSize 3
 
@@ -44,7 +45,9 @@ class Seline{
     bool has_seed_, has_point_cloud_, crop_world_plane_;
     ros::ServiceServer srv_trigger_new_seed_, srv_get_ee_offset_;
 
-    double gripper_length_;
+    double gripper_length_;     // Distance from base to gripper tip (z-axis)
+    double gripper_to_surface_; // Distance from base to the surface (y-axis)
+
     double ee_crop_theta_, ee_crop_max_y_, epsilon_region_on_gripper_;
     double crop_world_plane_height_;
 
