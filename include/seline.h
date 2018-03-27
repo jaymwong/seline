@@ -8,6 +8,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <visualization_msgs/Marker.h>
 
 #include <transform_conversions/HomogeneousTransform.h>
 #include <std_srvs/Trigger.h>
@@ -22,8 +23,13 @@
 #define kDefaultPointCloudLeafSize 0.005 // in meters
 
 #define kSearchEpsilonOnTracking 0.045 // in meters
+#define kSearchEpsilonOnGraspedObject 0.175 // in meters
 #define kMaxCropDistance 5.0  // in meters
 #define kOffsetVectorSize 3
+
+struct GraspedObjectGeometry{
+  double width, depth, length;
+};
 
 class Seline{
   public:
@@ -41,7 +47,7 @@ class Seline{
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_xyz_;
 
-    bool has_seed_, has_point_cloud_, crop_world_plane_;
+    bool has_seed_, has_point_cloud_, crop_world_plane_, has_grasped_obj_;
     ros::ServiceServer srv_trigger_new_seed_, srv_get_ee_offset_;
 
     double gripper_length_;     // Distance from base to gripper tip (z-axis)
@@ -50,19 +56,26 @@ class Seline{
     double ee_crop_theta_, ee_crop_max_y_, epsilon_region_on_gripper_;
     double crop_world_plane_height_;
 
+    PointCloudProperties original_model_cloud_properties_;
+
+    visualization_msgs::Marker grasped_obj_marker_;
+    GraspedObjectGeometry grasped_obj_geometry_;
+
     Eigen::Vector3d observed_offset_;
     Eigen::Matrix4d observed_offset_matrix_;
+    Eigen::Vector3d manipulator_translation_;
 
     pcl::PointXYZ seeded_point_;
-    Eigen::Matrix4d camera_to_ee_, camera_to_icp_, ee_to_world_;
-    Eigen::Matrix4d world_to_camera_, camera_to_world_;
+    Eigen::Affine3d camera_to_ee_, camera_to_icp_, ee_to_world_, ee_to_manipulator_;
+    Eigen::Affine3d world_to_camera_, camera_to_world_, manipulator_to_world_;
 
     ros::Publisher pub_original_cloud_, pub_transformed_cloud_, pub_segmented_cloud_, pub_icp_out_;
-    ros::Publisher pub_est_world_frame_, pub_seg_tracking_cloud_;
+    ros::Publisher pub_est_world_frame_, pub_seg_tracking_cloud_, pub_ee_track_cloud_;
+    ros::Publisher pub_grasp_obj_marker_;
     ros::Subscriber sub_point_cloud_;
 
     std::string ee_model_file_, point_cloud_topic_;
-    std::string camera_optical_frame_, ee_frame_, world_frame_;
+    std::string camera_optical_frame_, ee_frame_, world_frame_, manipulator_frame_;
     std::string seline_mode_;
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud_, target_cloud_; // the model cloud and the scene cloud
@@ -77,7 +90,8 @@ class Seline{
     void downsampleInitialModelCloud();
     void splicePointCloudByAxis(pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud, std::string axis, double min, double max);
 
-    void processSeed(Eigen::Matrix4d matrix);
+    bool processGraspedObject(Eigen::Matrix4d observed_ee_frame);
+    bool processSeed(Eigen::Affine3d seed_transform);
     pcl::PointCloud<pcl::PointXYZ> segmentEndEffectorFromSceneUsingSeed(Eigen::MatrixXd seed_transform, float radius);
     pcl::PointCloud<pcl::PointXYZ> doIterativeRegistration(pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud);
 
