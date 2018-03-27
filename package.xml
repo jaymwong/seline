@@ -18,6 +18,7 @@
   <depend>transform_conversions</depend>
   <depend>pointcloud_conversions</depend>
   <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
   <depend>rospy</depend>
   <depend>message_generation</depend>
 

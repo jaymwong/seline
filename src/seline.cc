@@ -5,6 +5,7 @@ Seline::Seline(std::string seline_mode){
   nh_.getParam("/seline/ee_model_file", ee_model_file_);
   nh_.getParam("/seline/ee_frame", ee_frame_);
   nh_.getParam("/seline/world_frame", world_frame_);
+  nh_.getParam("/seline/manipulator_frame", manipulator_frame_);
   nh_.getParam("/seline/camera_optical_frame", camera_optical_frame_);
   nh_.getParam("/seline/point_cloud_topic", point_cloud_topic_);
   nh_.getParam("/seline/ee_crop_theta", ee_crop_theta_);
@@ -24,9 +25,9 @@ Seline::Seline(std::string seline_mode){
   }
 
   // Using the loaded point cloud, compute its properties (min/max values in each dimension)
-  PointCloudProperties pc_prop = pointcloud_utils::computePointCloudMinMax(original_model_cloud_);
-  gripper_length_ = pc_prop.max_point.z - pc_prop.min_point.z;
-  gripper_to_surface_ = (pc_prop.max_point.y - pc_prop.min_point.y)/2.0;
+  original_model_cloud_properties_ = pointcloud_utils::computePointCloudMinMax(original_model_cloud_);
+  gripper_length_ = original_model_cloud_properties_.max_point.z - original_model_cloud_properties_.min_point.z;
+  gripper_to_surface_ = (original_model_cloud_properties_.max_point.y - original_model_cloud_properties_.min_point.y)/2.0;
 
   // Create debug publishers and the subscriber to the raw point cloud
   pub_original_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/original_cloud", 1);
@@ -34,15 +35,17 @@ Seline::Seline(std::string seline_mode){
   pub_seg_tracking_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/segmented_tracking_cloud", 1);
   pub_segmented_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/segmented_cloud", 1);
   pub_icp_out_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/icp_out", 1);
+  pub_ee_track_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/grasp_cloud", 1);
   pub_est_world_frame_ = nh_.advertise<transform_conversions::HomogeneousTransform>("/seline/est_world_frame", 1);
+  pub_grasp_obj_marker_ = nh_.advertise<visualization_msgs::Marker>("/seline/grasped_obj_geometry", 1);
 
   sub_point_cloud_ = nh_.subscribe(point_cloud_topic_, 1, &Seline::inputCloudCallback, this);
   tf_listener_ = new tf2_ros::TransformListener(tf_buffer_);
   srv_trigger_new_seed_ = nh_.advertiseService("/seline/trigger_seed", &Seline::triggerSeedCallback, this);
   srv_get_ee_offset_ = nh_.advertiseService("/seline/get_ee_offset", &Seline::getEndEffectorOffsetCallback, this);
 
-  camera_to_ee_ = Eigen::MatrixXd::Identity(4, 4);
-  camera_to_icp_ = Eigen::MatrixXd::Identity(4, 4);
+  camera_to_ee_.matrix() = Eigen::MatrixXd::Identity(4, 4);
+  camera_to_icp_.matrix() = Eigen::MatrixXd::Identity(4, 4);
 
   // Create the cropped model cloud as loaded in from above path_to_model
   downsampleInitialModelCloud();
@@ -50,6 +53,14 @@ Seline::Seline(std::string seline_mode){
 
   has_seed_ = false;
   has_point_cloud_ = false;
+  has_grasped_obj_ = false;
+
+  // Create the initial grasped object visuzliation marker
+  grasped_obj_marker_.header.frame_id = world_frame_;
+  grasped_obj_marker_.header.stamp = ros::Time();
+  grasped_obj_marker_.ns = "grasped_object";
+  grasped_obj_marker_.id = 128;
+  grasped_obj_marker_.type = visualization_msgs::Marker::CUBE;
 
   // Initialize the point cloud pointers
   source_cloud_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
@@ -74,12 +85,32 @@ void Seline::inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input){
   sor.filter(cloud_filtered);
   pcl::fromPCLPointCloud2(cloud_filtered, *input_cloud_xyz_);
 
+  // Save resources when in tracking mode by not computing anything until the
+  // end effector is within the view of the camera
+  pcl::PointCloud<pcl::PointXYZ>::Ptr tf_world_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  if (!lookupKnownTransformations()) { std::cout << "No transforms. Exiting.\n"; return; }
+  pcl::transformPointCloud(*input_cloud_xyz_, *tf_world_cloud, world_to_camera_.matrix());
+
+  if (seline_mode_ == "track"){
+    PointCloudProperties result = pointcloud_utils::computePointCloudMinMax(tf_world_cloud);
+
+    Eigen::Affine3d ee_world;
+    ee_world.matrix() = manipulator_to_world_.matrix().inverse();
+    double end_effector_z = ee_world.translation().z();
+
+    // std::cout << result.min_point.z << " " << result.max_point.z << "\n";
+    // std::cout << "End effector z: " << end_effector_z << "\n";
+    if (end_effector_z < result.min_point.z || end_effector_z > result.max_point.z){
+      ROS_INFO("End effector out of view. Exiting.");
+      has_point_cloud_ = false;
+      return;
+    }
+  }
+
   if (crop_world_plane_ && lookupKnownTransformations()){
     // First transform the input cloud into the world frame, perform a crop over the Z-axis
     // and lastly transform the cropped cloud back into the camera_optical_frame
-    pcl::PointCloud<pcl::PointXYZ>::Ptr tf_world_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::transformPointCloud(*input_cloud_xyz_, *tf_world_cloud, world_to_camera_);
 
     // Remove all point under the plane
     pcl::PassThrough<pcl::PointXYZ> pass;
@@ -88,7 +119,7 @@ void Seline::inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input){
     pass.setFilterLimits(crop_world_plane_height_, kMaxCropDistance);
     pass.filter(*result_cloud);
     copyPointCloud(*result_cloud, *tf_world_cloud);
-    pcl::transformPointCloud(*tf_world_cloud, *input_cloud_xyz_, camera_to_world_);
+    pcl::transformPointCloud(*tf_world_cloud, *input_cloud_xyz_, camera_to_world_.matrix());
   }
 
   has_point_cloud_ = true;
@@ -137,10 +168,8 @@ void Seline::splicePointCloudByAxis(pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud
   copyPointCloud(*cloud_filtered, *pt_cloud);
 }
 
-void Seline::processSeed(Eigen::Matrix4d matrix){
-  Eigen::Affine3d seed_transform; // This transform is from the camera to the base of the gripper
-  seed_transform.matrix() = matrix;
-
+// @param: seed_transform - This transform is from the camera to the base of the gripper
+bool Seline::processSeed(Eigen::Affine3d seed_transform){
   // Transform the original cloud using the seed transform
   transformed_cloud_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::transformPointCloud(*original_model_cloud_, *transformed_cloud_, seed_transform);
@@ -149,7 +178,7 @@ void Seline::processSeed(Eigen::Matrix4d matrix){
   // Do not try to do segmentation and ICP if we don't have the scene cloud yet
   if (!has_point_cloud_){
     std::cout << "No point cloud received, skipping processing seed!\n";
-    return;
+    return false;
   }
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr segmented_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
@@ -164,7 +193,7 @@ void Seline::processSeed(Eigen::Matrix4d matrix){
     // Seed the ICP solution using the transformed cloud and its transformation
     if (!has_seed_){
       copyPointCloud(*transformed_cloud_, *icp_cloud_);
-      camera_to_icp_ = seed_transform.matrix();
+      camera_to_icp_.matrix() = seed_transform.matrix();
       has_seed_ = true;
     }
 
@@ -180,16 +209,15 @@ void Seline::processSeed(Eigen::Matrix4d matrix){
     // and estimate the error and accommodate the offset).
     *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(seed_transform.matrix(), kSearchEpsilonOnTracking);
     pcl::PointCloud<pcl::PointXYZ>::Ptr tf_world_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::transformPointCloud(*segmented_cloud, *tf_world_cloud, world_to_camera_);
+    pcl::transformPointCloud(*segmented_cloud, *tf_world_cloud, world_to_camera_.matrix());
 
-    if (tf_world_cloud->points.size() == 0) { return; }
+    if (tf_world_cloud->points.size() == 0) { return false; }
 
     // Determine the offset between the desired end effector position and the observed
     // end effector position given by the median of the extracted point cloud
     Eigen::Affine3d desired_ee_pose;
-    desired_ee_pose.matrix() = ee_to_world_.inverse();
+    desired_ee_pose.matrix() = ee_to_world_.matrix().inverse();
     Eigen::Affine3d observed_ee_pose = desired_ee_pose;
-
 
     PointCloudProperties cloud_props = pointcloud_utils::computePointCloudMinMax(tf_world_cloud);
     Eigen::Vector3d median = pointcloud_utils::computePointCloudMedian(tf_world_cloud);
@@ -199,16 +227,81 @@ void Seline::processSeed(Eigen::Matrix4d matrix){
 
     // The offset in the y direction is the surface of the point cloud offset by the width of the gripper
     observed_offset_.y() = (cloud_props.max_point.y - gripper_to_surface_) - desired_ee_pose.translation().y();
+    observed_offset_.z() = 0.0; // Do not trust the median point in the z-direction
 
     observed_ee_pose.translation() = desired_ee_pose.translation() + observed_offset_;
     // Eigen::Matrix4d adjusted_camera_seed = world_to_camera_.inverse() * observed_ee_pose.matrix();
     // *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(adjusted_camera_seed, kSearchEpsilonOnTracking);
     // pcl::transformPointCloud(*segmented_cloud, *tf_world_cloud, world_to_camera_);
 
-
     transform_conversions::publish_matrix_as_tf(br_, observed_ee_pose.matrix() , world_frame_, "observed_ee_pose");
     pointcloud_utils::publishPointCloudXYZ(pub_seg_tracking_cloud_, *tf_world_cloud, world_frame_);
+
+    has_grasped_obj_ = processGraspedObject(observed_ee_pose.matrix());
+
+    if (!has_grasped_obj_){ // If there's no object clear the marker
+      grasped_obj_marker_.action = visualization_msgs::Marker::DELETEALL;
+      pub_grasp_obj_marker_.publish(grasped_obj_marker_);
+    }
+
   }
+  return true;
+}
+
+bool Seline::processGraspedObject(Eigen::Matrix4d observed_ee_frame){
+  // Obtain the transformation to the tip of the gripper as well as the observed manipulation frame
+  Eigen::Matrix4d observed_manipulator = observed_ee_frame * ee_to_manipulator_.matrix();
+  Eigen::Matrix4d ee_grasp_reference = observed_ee_frame * transform_conversions::translation_matrix(0, 0, gripper_length_);
+  Eigen::Matrix4d cam_ee_reference = world_to_camera_.inverse() * ee_grasp_reference;
+  transform_conversions::publish_matrix_as_tf(br_, observed_manipulator, world_frame_, "observed_manipulator_link");
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr segmented_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(cam_ee_reference, kSearchEpsilonOnGraspedObject);
+  pcl::transformPointCloud(*segmented_cloud, *segmented_cloud, world_to_camera_.matrix());
+  if (segmented_cloud->points.size() == 0){ return false; }
+
+  // Spice out the cloud based on the gripper geometry and grasp frames
+  double max_gripper_offset = 1.75*gripper_to_surface_;
+  manipulator_translation_ = transform_conversions::translation_from_matrix(observed_manipulator);
+  splicePointCloudByAxis(segmented_cloud, "z", 0, manipulator_translation_.z());
+  splicePointCloudByAxis(segmented_cloud, "y", manipulator_translation_.y(), manipulator_translation_.y()+max_gripper_offset);
+  splicePointCloudByAxis(segmented_cloud, "x", manipulator_translation_.x()-max_gripper_offset, manipulator_translation_.x()+max_gripper_offset);
+
+  if (segmented_cloud->points.size() == 0){ return false; }
+  segmented_cloud = pointcloud_utils::getMaxEuclideanClusterFromPointCloud(segmented_cloud, 0.01);
+
+  if (segmented_cloud->points.size() == 0){ return false; }
+  pointcloud_utils::publishPointCloudXYZ(pub_ee_track_cloud_, *segmented_cloud, world_frame_);
+
+  // Obtain the point cloud geometries from the object in the hand
+  PointCloudProperties result = pointcloud_utils::computePointCloudMinMax(segmented_cloud);
+  // std::cout << "Min point: " << result.min_point.x << " " << result.min_point.y << " " << result.min_point.z << "\n";
+  // std::cout << "Max point: " << result.max_point.x << " " << result.max_point.y << " " << result.max_point.z << "\n";
+
+  grasped_obj_geometry_.width = result.max_point.x - result.min_point.x;
+  grasped_obj_geometry_.depth = result.max_point.y - result.min_point.y;
+  grasped_obj_geometry_.length = result.max_point.z - result.min_point.z;
+
+  // std::cout << "Object width: " << width  << "\n";
+  // std::cout << "Object depth: " << depth  << "\n";
+  // std::cout << "Object length: " << length << "\n";
+
+  // Create a visualization marker for the grasped object geometry
+  grasped_obj_marker_.action = visualization_msgs::Marker::MODIFY;
+  grasped_obj_marker_.pose.position.x = result.min_point.x + grasped_obj_geometry_.width/2.0;
+  grasped_obj_marker_.pose.position.y = result.min_point.y + grasped_obj_geometry_.depth/2.0 - observed_offset_.x();
+  grasped_obj_marker_.pose.position.z = result.min_point.z + grasped_obj_geometry_.length/2.0;
+  grasped_obj_marker_.pose.orientation.w = 1.0;
+  grasped_obj_marker_.scale.x = grasped_obj_geometry_.width;
+  grasped_obj_marker_.scale.y = grasped_obj_geometry_.depth;
+  grasped_obj_marker_.scale.z = grasped_obj_geometry_.length;
+  grasped_obj_marker_.color.r = 1.0;
+  grasped_obj_marker_.color.g = 0.0;
+  grasped_obj_marker_.color.b = 0.0;
+  grasped_obj_marker_.color.a = 0.5;
+  pub_grasp_obj_marker_.publish(grasped_obj_marker_);
+
+  return true;
 }
 
 // Segments the end effector point cloud by using the translation component of the transformation
@@ -252,6 +345,24 @@ bool Seline::getEndEffectorOffsetCallback(seline::GetEndEffectorOffset::Request 
   for (int i = 0; i < kOffsetVectorSize; i++){
     resp.offset[i] = observed_offset_(i);
   }
+
+  resp.has_grasped_obj = has_grasped_obj_;
+  if (has_grasped_obj_){
+    resp.grasped_obj_geometry[0] = grasped_obj_geometry_.width;
+    resp.grasped_obj_geometry[1] = grasped_obj_geometry_.depth;
+    resp.grasped_obj_geometry[2] = grasped_obj_geometry_.length;
+
+    resp.observed_manipulator_origin[0] = manipulator_translation_.x();
+    resp.observed_manipulator_origin[1] = manipulator_translation_.y();
+    resp.observed_manipulator_origin[2] = manipulator_translation_.z();
+
+    resp.grasped_obj_origin[0] = grasped_obj_marker_.pose.position.x;
+    resp.grasped_obj_origin[1] = grasped_obj_marker_.pose.position.y;
+    resp.grasped_obj_origin[2] = grasped_obj_marker_.pose.position.z;
+    resp.grasped_obj_marker = grasped_obj_marker_;
+  }
+
+
   return true;
 }
 
@@ -265,7 +376,7 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
   icp.align (*cloud_out);
 
   if (icp.hasConverged ()) {
-    camera_to_icp_ = icp.getFinalTransformation ().cast<double>() * camera_to_icp_;
+    camera_to_icp_.matrix() = icp.getFinalTransformation ().cast<double>() * camera_to_icp_.matrix();
     transform_conversions::publish_matrix_as_tf(br_, camera_to_icp_ , camera_optical_frame_, "est_camera_to_tool");
   }
   else{
@@ -278,10 +389,12 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
 
 bool Seline::lookupKnownTransformations(){
   try{
-    camera_to_ee_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, ee_frame_, ros::Time(0))).matrix();
-    ee_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(ee_frame_, world_frame_, ros::Time(0))).matrix();
-    world_to_camera_ = tf2::transformToEigen(tf_buffer_.lookupTransform(world_frame_, camera_optical_frame_, ros::Time(0))).matrix();
-    camera_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, world_frame_, ros::Time(0))).matrix();
+    camera_to_ee_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, ee_frame_, ros::Time(0)));
+    ee_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(ee_frame_, world_frame_, ros::Time(0)));
+    ee_to_manipulator_ = tf2::transformToEigen(tf_buffer_.lookupTransform(ee_frame_, manipulator_frame_, ros::Time(0)));
+    manipulator_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(manipulator_frame_, world_frame_, ros::Time(0)));
+    world_to_camera_ = tf2::transformToEigen(tf_buffer_.lookupTransform(world_frame_, camera_optical_frame_, ros::Time(0)));
+    camera_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, world_frame_, ros::Time(0)));
     return true;
   }
   catch(...){
@@ -296,7 +409,7 @@ void Seline::processEstimatedTransformations(){
   transform_conversions::publish_matrix_as_tf(br_, ee_to_world_ , ee_frame_, "initial_world_frame");
 
   // Back out the transformations to estimate the camera_to_world
-  Eigen::MatrixXd est_camera_to_world = camera_to_icp_ * ee_to_world_;
+  Eigen::MatrixXd est_camera_to_world = camera_to_icp_.matrix() * ee_to_world_.matrix();
   transform_conversions::publish_matrix_as_tf(br_, est_camera_to_world , camera_optical_frame_, "est_world_frame");
   transform_conversions::HomogeneousTransform est_world_frame;
   est_world_frame.source_frame = camera_optical_frame_;
@@ -306,9 +419,11 @@ void Seline::processEstimatedTransformations(){
 }
 
 void Seline::runOnce(){
-  if (lookupKnownTransformations()){
-    processSeed(camera_to_ee_);
+  if (lookupKnownTransformations() && processSeed(camera_to_ee_) ){
     processEstimatedTransformations();
+  }
+  else {
+    ros::Duration(0.25).sleep(); // Downgrade the node to 4 Hz on failures
   }
 }
 

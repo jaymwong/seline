@@ -10,6 +10,7 @@ find_package(catkin REQUIRED
   pcl_conversions
   std_msgs
   sensor_msgs
+  visualization_msgs
   transform_conversions
   pointcloud_conversions
   message_generation
@@ -27,6 +28,7 @@ add_service_files(DIRECTORY srv
 generate_messages(
   DEPENDENCIES
   std_msgs
+  visualization_msgs
 )
 
 catkin_package(

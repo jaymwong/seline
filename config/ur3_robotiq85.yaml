@@ -9,6 +9,10 @@
 /seline/camera_link_name: "camera_link"
 /seline/ee_frame: "tool0"
 
+# Manipulator frame is used for grasped object tracking. Can set this the same
+# as ee_frame for "dont care" for seline tracking mode.
+/seline/manipulator_frame: "robotiq_manipulator_link"
+
 # Raw point cloud topic name
 /seline/point_cloud_topic: "/camera/depth_registered/points"
 
