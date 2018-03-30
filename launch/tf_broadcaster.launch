@@ -2,7 +2,7 @@
 <launch>
 
   <rosparam command="load" file="$(find seline)/config/ur3_robotiq85.yaml" />
-  <node name="seline" pkg="seline" type="seline" output="screen" args="track"/>
-  <node name="tf_broadcaster" pkg="seline" type="tf_broadcaster.py" output="screen"/>
+  <node name="seline" pkg="seline" type="seline" args="track"/>
+  <node name="tf_broadcaster" pkg="seline" type="tf_broadcaster.py" />
 
 </launch>
