@@ -208,6 +208,13 @@ bool Seline::processSeed(Eigen::Affine3d seed_transform){
     // (e.g. scenarios where the desired end effector position is off, yet we can observe
     // and estimate the error and accommodate the offset).
     *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(seed_transform.matrix(), kSearchEpsilonOnTracking);
+
+    if (segmented_cloud->points.size() < kMinEndEffectorTrackingPoints){
+      seed_transform.matrix() = seed_transform.matrix() * transform_conversions::translation_matrix(kCameraFrameSearchDistance, 0, 0);
+      *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(seed_transform.matrix(), kSearchEpsilonOnTracking);
+    }
+
+
     pcl::PointCloud<pcl::PointXYZ>::Ptr tf_world_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::transformPointCloud(*segmented_cloud, *tf_world_cloud, world_to_camera_.matrix());
 

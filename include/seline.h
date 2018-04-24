@@ -27,6 +27,9 @@
 #define kMaxCropDistance 5.0  // in meters
 #define kOffsetVectorSize 3
 
+#define kMinEndEffectorTrackingPoints 50
+#define kCameraFrameSearchDistance 0.05 // in meters
+
 struct GraspedObjectGeometry{
   double width, depth, length;
 };
