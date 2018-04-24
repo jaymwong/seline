@@ -210,7 +210,7 @@ bool Seline::processSeed(Eigen::Affine3d seed_transform){
     *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(seed_transform.matrix(), kSearchEpsilonOnTracking);
 
     if (segmented_cloud->points.size() < kMinEndEffectorTrackingPoints){
-      seed_transform.matrix() = seed_transform.matrix() * transform_conversions::translation_matrix(kCameraFrameSearchDistance, 0, 0);
+      seed_transform.matrix() = seed_transform.matrix() * athena::transform_conversions::translation_matrix(kCameraFrameSearchDistance, 0, 0);
       *segmented_cloud = segmentEndEffectorFromSceneUsingSeed(seed_transform.matrix(), kSearchEpsilonOnTracking);
     }
 
