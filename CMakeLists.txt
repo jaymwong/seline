@@ -11,8 +11,7 @@ find_package(catkin REQUIRED
   std_msgs
   sensor_msgs
   visualization_msgs
-  transform_conversions
-  pointcloud_conversions
+  athena
   message_generation
 )
 
@@ -34,7 +33,7 @@ generate_messages(
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES seline
-   CATKIN_DEPENDS  roscpp rospy std_msgs message_generation pointcloud_conversions transform_conversions
+   CATKIN_DEPENDS  roscpp rospy std_msgs message_generation athena
    DEPENDS system_lib Eigen3
 )
 
