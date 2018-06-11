@@ -37,6 +37,7 @@ Seline::Seline(std::string seline_mode){
   pub_icp_out_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/icp_out", 1);
   pub_ee_track_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/grasp_cloud", 1);
   pub_est_world_frame_ = nh_.advertise<athena_transform::HomogeneousTransform>("/seline/est_world_frame", 1);
+  pub_est_eye_to_hand_frame_ = nh_.advertise<athena_transform::HomogeneousTransform>("/seline/est_eye_to_hand_frame", 1);
   pub_grasp_obj_marker_ = nh_.advertise<visualization_msgs::Marker>("/seline/grasped_obj_geometry", 1);
 
   sub_point_cloud_ = nh_.subscribe(point_cloud_topic_, 1, &Seline::inputCloudCallback, this);
@@ -390,6 +391,12 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
     PCL_ERROR ("\nICP has not converged.\n");
   }
   athena::pointcloud::publishPointCloudXYZ(pub_icp_out_, *cloud_out, camera_optical_frame_);
+  athena::transform::publish_matrix_as_tf(br_, camera_to_icp_.matrix() , camera_optical_frame_, "est_eye_to_hand_frame");
+  athena_transform::HomogeneousTransform est_eye_to_hand_frame;
+  est_eye_to_hand_frame.source_frame = camera_optical_frame_;
+  est_eye_to_hand_frame.frame_id = manipulator_frame_;
+  est_eye_to_hand_frame.transform = athena::transform::eigen4d_matrix_to_array(camera_to_icp_.matrix());
+  pub_est_eye_to_hand_frame_.publish(est_eye_to_hand_frame);
   return *cloud_out;
 }
 
