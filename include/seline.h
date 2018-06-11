@@ -74,7 +74,7 @@ class Seline{
 
     ros::Publisher pub_original_cloud_, pub_transformed_cloud_, pub_segmented_cloud_, pub_icp_out_;
     ros::Publisher pub_est_world_frame_, pub_seg_tracking_cloud_, pub_ee_track_cloud_;
-    ros::Publisher pub_grasp_obj_marker_;
+    ros::Publisher pub_grasp_obj_marker_, pub_est_eye_to_hand_frame_;
     ros::Subscriber sub_point_cloud_;
 
     std::string ee_model_file_, point_cloud_topic_;
