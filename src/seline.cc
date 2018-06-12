@@ -392,11 +392,15 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
   }
   athena::pointcloud::publishPointCloudXYZ(pub_icp_out_, *cloud_out, camera_optical_frame_);
   athena::transform::publish_matrix_as_tf(br_, camera_to_icp_.matrix() , camera_optical_frame_, "est_eye_to_hand_frame");
-  athena_transform::HomogeneousTransform est_eye_to_hand_frame;
-  est_eye_to_hand_frame.source_frame = camera_optical_frame_;
-  est_eye_to_hand_frame.frame_id = manipulator_frame_;
-  est_eye_to_hand_frame.transform = athena::transform::eigen4d_matrix_to_array(camera_to_icp_.matrix());
-  pub_est_eye_to_hand_frame_.publish(est_eye_to_hand_frame);
+
+  // Only push out the homogenous transform if we're in calibrate mode
+  if (seline_mode_ == "calibrate"){
+    athena_transform::HomogeneousTransform est_eye_to_hand_frame;
+    est_eye_to_hand_frame.source_frame = camera_optical_frame_;
+    est_eye_to_hand_frame.frame_id = manipulator_frame_;
+    est_eye_to_hand_frame.transform = athena::transform::eigen4d_matrix_to_array(camera_to_icp_.matrix());
+    pub_est_eye_to_hand_frame_.publish(est_eye_to_hand_frame);
+  }
   return *cloud_out;
 }
 
@@ -425,11 +429,15 @@ void Seline::processEstimatedTransformations(){
   // Back out the transformations to estimate the camera_to_world
   Eigen::MatrixXd est_camera_to_world = camera_to_icp_.matrix() * ee_to_world_.matrix();
   athena::transform::publish_matrix_as_tf(br_, est_camera_to_world , camera_optical_frame_, "est_world_frame");
-  athena_transform::HomogeneousTransform est_world_frame;
-  est_world_frame.source_frame = camera_optical_frame_;
-  est_world_frame.frame_id = world_frame_;
-  est_world_frame.transform = athena::transform::eigen4d_matrix_to_array(est_camera_to_world);
-  pub_est_world_frame_.publish(est_world_frame);
+
+  // Only push out the homogeneous transform if we're in calibrate mode
+  if (seline_mode_ == "calibrate"){
+    athena_transform::HomogeneousTransform est_world_frame;
+    est_world_frame.source_frame = camera_optical_frame_;
+    est_world_frame.frame_id = world_frame_;
+    est_world_frame.transform = athena::transform::eigen4d_matrix_to_array(est_camera_to_world);
+    pub_est_world_frame_.publish(est_world_frame);
+  }
 }
 
 void Seline::runOnce(){
