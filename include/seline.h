@@ -13,7 +13,7 @@
 #include <athena_transform/HomogeneousTransform.h>
 #include <std_srvs/Trigger.h>
 
-#include <seline/GetEndEffectorOffset.h>
+#include <mercury/GetEndEffectorOffset.h>
 
 #define kDefaultLoopRate 25
 
@@ -100,7 +100,7 @@ class Seline{
 
     void inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input);
     bool triggerSeedCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp);
-    bool getEndEffectorOffsetCallback(seline::GetEndEffectorOffset::Request &req, seline::GetEndEffectorOffset::Response &resp);
+    bool getEndEffectorOffsetCallback(mercury::GetEndEffectorOffset::Request &req, mercury::GetEndEffectorOffset::Response &resp);
 
 
 
