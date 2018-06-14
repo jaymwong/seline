@@ -347,7 +347,7 @@ bool Seline::triggerSeedCallback(std_srvs::Trigger::Request &req, std_srvs::Trig
   return true;
 }
 
-bool Seline::getEndEffectorOffsetCallback(seline::GetEndEffectorOffset::Request &req, seline::GetEndEffectorOffset::Response &resp){
+bool Seline::getEndEffectorOffsetCallback(mercury::GetEndEffectorOffset::Request &req, mercury::GetEndEffectorOffset::Response &resp){
   resp.frame_id = world_frame_;
 
   for (int i = 0; i < kOffsetVectorSize; i++){
@@ -369,7 +369,6 @@ bool Seline::getEndEffectorOffsetCallback(seline::GetEndEffectorOffset::Request 
     resp.grasped_obj_origin[2] = grasped_obj_marker_.pose.position.z;
     resp.grasped_obj_marker = grasped_obj_marker_;
   }
-
 
   return true;
 }
