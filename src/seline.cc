@@ -56,6 +56,9 @@ Seline::Seline(std::string seline_mode){
   has_point_cloud_ = false;
   has_grasped_obj_ = false;
 
+  // Disable the verbose pcl console printing
+  pcl::console::setVerbosityLevel(pcl::console::L_ALWAYS);
+
   // Create the initial grasped object visuzliation marker
   grasped_obj_marker_.header.frame_id = world_frame_;
   grasped_obj_marker_.header.stamp = ros::Time();
@@ -75,6 +78,8 @@ Seline::~Seline(){}
 
 
 void Seline::inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input){
+  if (input->height*input->width < 0){ return; }
+
   pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
   pcl::PCLPointCloud2* input_cloud_pcl = new pcl::PCLPointCloud2;
   pcl::PCLPointCloud2ConstPtr cloudPtr(input_cloud_pcl);
