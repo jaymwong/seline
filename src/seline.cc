@@ -42,8 +42,13 @@ Seline::Seline(std::string seline_mode){
 
   sub_point_cloud_ = nh_.subscribe(point_cloud_topic_, 1, &Seline::inputCloudCallback, this);
   tf_listener_ = new tf2_ros::TransformListener(tf_buffer_);
-  srv_trigger_new_seed_ = nh_.advertiseService("/seline/trigger_seed", &Seline::triggerSeedCallback, this);
-  srv_get_ee_offset_ = nh_.advertiseService("/seline/get_ee_offset", &Seline::getEndEffectorOffsetCallback, this);
+
+  if (seline_mode_ == "calibrate"){
+    srv_trigger_new_seed_ = nh_.advertiseService("/seline/trigger_seed", &Seline::triggerSeedCallback, this);
+  }
+  if (seline_mode_ == "track"){
+    srv_get_ee_offset_ = nh_.advertiseService("/seline/get_ee_offset", &Seline::getEndEffectorOffsetCallback, this);
+  }
 
   camera_to_ee_.matrix() = Eigen::MatrixXd::Identity(4, 4);
   camera_to_icp_.matrix() = Eigen::MatrixXd::Identity(4, 4);
