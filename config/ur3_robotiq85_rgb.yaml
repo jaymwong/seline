@@ -1,0 +1,38 @@
+
+# Filename for the pcd end effector model file; located in seline/models/
+/seline/ee_model_file: "robotiq_85_base_link_fine.pcd"
+
+# Frame names to be used by seline's transform lookup
+# NOTE, in reality the world_frame is actually the robot's base_link
+/seline/world_frame: "world"
+/seline/camera_optical_frame: "camera_rgb_optical_frame"
+/seline/camera_link_name: "camera_link"
+/seline/ee_frame: "tool0"
+
+# Manipulator frame is used for grasped object tracking. Can set this the same
+# as ee_frame for "dont care" for seline tracking mode.
+/seline/manipulator_frame: "robotiq_manipulator_link"
+
+# Raw point cloud topic name
+/seline/point_cloud_topic: "camera/depth_registered/points"
+
+# Whether to transform the raw point cloud into the current world frame and
+# then apply a pass through filter to crop out the points under the robot
+/seline/crop_world_plane: true
+/seline/crop_world_plane_height: 0.033    # in meters
+
+
+# End effector model and initial cropping parameters
+# /seline/gripper_length: 0.15748   # in meters from the base to the finger tip
+
+/seline/ee_crop_theta: 10         # in degrees
+/seline/ee_crop_max_y: 0.2        # in meters
+
+# How much epsilon to add on top of the gripper size (e.g. gripper_length/2.0)
+# To be used as a radius on which we grab points off the scene cloud. Too large
+# will pull unnecessary points, too small and we may not be able to fall into
+# the basin of convergence for ICP, due to lacking sufficient scene points
+/seline/epsilon_region_on_gripper: 0.075        # in meters
+
+
+/seline/processed_calibration_filename: "ur3_robotiq85.yaml"

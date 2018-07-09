@@ -24,6 +24,8 @@ Seline::Seline(std::string seline_mode){
     std::cout << "Successfully loaded file " << ee_model_file_ << " (" << original_model_cloud_->size () << " points)\n";
   }
 
+  std::cout << "Point_Cloud_topic: " << point_cloud_topic_ << "\n";
+
   // Using the loaded point cloud, compute its properties (min/max values in each dimension)
   original_model_cloud_properties_ = athena::pointcloud::computePointCloudMinMax(original_model_cloud_);
   gripper_length_ = original_model_cloud_properties_.max_point.z - original_model_cloud_properties_.min_point.z;
