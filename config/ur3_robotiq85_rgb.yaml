@@ -35,4 +35,4 @@
 /seline/epsilon_region_on_gripper: 0.075        # in meters
 
 
-/seline/processed_calibration_filename: "ur3_robotiq85.yaml"
+/seline/processed_calibration_filename: "ur3_robotiq85_rgb.yaml"

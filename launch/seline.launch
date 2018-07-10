@@ -2,7 +2,7 @@
 <launch>
 
   <rosparam command="load" file="$(find seline)/config/ur3_robotiq85_rgb.yaml" />
-  <node name="seline" pkg="seline" type="seline" output="screen" args="calibrate"/>
-  <node name="process_data" pkg="seline" type="process_data.py" output="screen"/>
+  <node name="seline" pkg="seline" type="seline" args="calibrate"/>
+  <node name="process_data" pkg="seline" type="process_data.py" />
 
 </launch>
