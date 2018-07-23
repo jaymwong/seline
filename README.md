@@ -5,6 +5,12 @@ The purpose of `seline` is to use model-based pose estimation to estimate the tr
 
 Currently, `seline` achieves on the order of 0.6cm of max error in a workspace of about a meter.
 
+## Citing
+Since the fundamental principles of `seline` are based off kinematic-based point cloud segmentation and registration, the underlying idea originating from *SegICP*, use the following citation,
+```
+  J. M. Wong, V. Kee, T. Le, S. Wagner, G.L. Mariottini, A. Schneider, L. Hamilton, R. Chipalkatty, M. Hebert, D. M.S. Johnson, J. Wu, B. Zhou, and A. Torralba. “SegICP: Integrated Deep Semantic Segmentation and Pose Estimation.” In the Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), Vancouver, Canada. Sep 2017.
+```
+
 ## Examples
 Given the observed segmented scene point cloud in green, `seline` estimates the end effector pose using the forward kinematics as a seed (blue) and performs point to point ICP with the segmented scene cloud (green). This results in the estimated camera to end effector transformation. Since we know the forward kinematics, we can compute the end effector to world tranform (as described by the robot's URDF), and back out the estimated new world frame.
 ![example](images/ur3_robotiq85_ex_combined.png)
@@ -53,3 +59,5 @@ roslaunch seline tf_broadcaster.launch
 __Multiple End Effector Poses + Least Squares Minimization.__ This is currently under works. We are currently writing a procedure to automatically send the end effector to various locations in the scene, for each location estimate the new world frame, and perform a regression over the set of estimated frames.
 
 __Fixed-base Robotic Arms.__ In reality the `world_frame` is described here is actually the robot's `base_link`; this README is using them as if they are interchangable since `seline` was originally designed for a robot with a fixed base. For mobile systems, the `world_frame` in the configuration file should refer to the robot's `base_link`.
+
+
