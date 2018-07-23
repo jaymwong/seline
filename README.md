@@ -8,7 +8,12 @@ Currently, `seline` achieves on the order of 0.6cm of max error in a workspace o
 ## Citing
 Since the fundamental principles of `seline` are based off kinematic-based point cloud segmentation and registration, the underlying idea originating from *SegICP*, use the following citation,
 ```
-  J. M. Wong, V. Kee, T. Le, S. Wagner, G.L. Mariottini, A. Schneider, L. Hamilton, R. Chipalkatty, M. Hebert, D. M.S. Johnson, J. Wu, B. Zhou, and A. Torralba. “SegICP: Integrated Deep Semantic Segmentation and Pose Estimation.” In the Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), Vancouver, Canada. Sep 2017.
+  J. M. Wong, V. Kee, T. Le, S. Wagner, G.L. Mariottini, A. Schneider,
+  L. Hamilton, R. Chipalkatty, M. Hebert, D. M.S. Johnson, J. Wu,
+  B. Zhou, and A. Torralba. “SegICP: Integrated Deep Semantic Segmentation
+  and Pose Estimation.” In the Proceedings of the IEEE/RSJ International
+  Conference on Intelligent Robots and Systems (IROS), Vancouver, Canada.
+  Sep 2017.
 ```
 
 ## Examples
