@@ -409,7 +409,7 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
     athena_transform::HomogeneousTransform est_eye_to_hand_frame;
     est_eye_to_hand_frame.source_frame = camera_optical_frame_;
     est_eye_to_hand_frame.frame_id = manipulator_frame_;
-    est_eye_to_hand_frame.transform = athena::transform::eigen4d_matrix_to_array(camera_to_icp_.matrix());
+    est_eye_to_hand_frame.transform = athena::conversions::toBoostArrayd(camera_to_icp_.matrix());
     pub_est_eye_to_hand_frame_.publish(est_eye_to_hand_frame);
   }
   return *cloud_out;
@@ -446,7 +446,7 @@ void Seline::processEstimatedTransformations(){
     athena_transform::HomogeneousTransform est_world_frame;
     est_world_frame.source_frame = camera_optical_frame_;
     est_world_frame.frame_id = world_frame_;
-    est_world_frame.transform = athena::transform::eigen4d_matrix_to_array(est_camera_to_world);
+    est_world_frame.transform = athena::conversions::toBoostArrayd(est_camera_to_world);
     pub_est_world_frame_.publish(est_world_frame);
   }
 }
