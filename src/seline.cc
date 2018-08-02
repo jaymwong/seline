@@ -15,6 +15,7 @@ Seline::Seline(std::string seline_mode){
   nh_.getParam("/seline/crop_world_plane_height", crop_world_plane_height_);
 
   seline_mode_ = seline_mode;
+  has_transforms_ = false;
 
   // Load the model from the models directory
   seline_pkg_dir_ = ros::package::getPath("seline");
@@ -101,7 +102,7 @@ void Seline::inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input){
   // Save resources when in tracking mode by not computing anything until the
   // end effector is within the view of the camera
   pcl::PointCloud<pcl::PointXYZ>::Ptr tf_world_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  if (!lookupKnownTransformations()) { std::cout << "No transforms. Exiting.\n"; return; }
+  if (!has_transforms_) { std::cout << "No transforms. Exiting.\n"; return; }
   pcl::transformPointCloud(*input_cloud_xyz_, *tf_world_cloud, world_to_camera_.matrix());
 
   if (seline_mode_ == "track"){
@@ -120,7 +121,7 @@ void Seline::inputCloudCallback(const sensor_msgs::PointCloud2ConstPtr& input){
     }
   }
 
-  if (crop_world_plane_ && lookupKnownTransformations()){
+  if (crop_world_plane_ && has_transforms_){
     // First transform the input cloud into the world frame, perform a crop over the Z-axis
     // and lastly transform the cropped cloud back into the camera_optical_frame
     pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud (new pcl::PointCloud<pcl::PointXYZ>);
@@ -424,6 +425,7 @@ bool Seline::lookupKnownTransformations(){
     manipulator_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(manipulator_frame_, world_frame_, ros::Time(0)));
     world_to_camera_ = tf2::transformToEigen(tf_buffer_.lookupTransform(world_frame_, camera_optical_frame_, ros::Time(0)));
     camera_to_world_ = tf2::transformToEigen(tf_buffer_.lookupTransform(camera_optical_frame_, world_frame_, ros::Time(0)));
+    has_transforms_ = true;
     return true;
   }
   catch(...){
@@ -452,7 +454,8 @@ void Seline::processEstimatedTransformations(){
 }
 
 void Seline::runOnce(){
-  if (lookupKnownTransformations() && processSeed(camera_to_ee_) ){
+  lookupKnownTransformations();
+  if (has_transforms_ && processSeed(camera_to_ee_) ){
     processEstimatedTransformations();
   }
   else {
