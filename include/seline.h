@@ -50,7 +50,7 @@ class Seline{
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_xyz_;
 
-    bool has_seed_, has_point_cloud_, crop_world_plane_, has_grasped_obj_;
+    bool has_seed_, has_point_cloud_, crop_world_plane_, has_grasped_obj_, has_transforms_;
     ros::ServiceServer srv_trigger_new_seed_, srv_get_ee_offset_;
 
     double gripper_length_;     // Distance from base to gripper tip (z-axis)
