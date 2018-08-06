@@ -10,7 +10,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <visualization_msgs/Marker.h>
 
-#include <athena_transform/HomogeneousTransform.h>
+#include <athena_msgs/HomogeneousTransform.h>
 #include <std_srvs/Trigger.h>
 
 #include <mercury/GetEndEffectorOffset.h>

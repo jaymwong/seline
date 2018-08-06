@@ -39,8 +39,8 @@ Seline::Seline(std::string seline_mode){
   pub_segmented_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/segmented_cloud", 1);
   pub_icp_out_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/icp_out", 1);
   pub_ee_track_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/seline/grasp_cloud", 1);
-  pub_est_world_frame_ = nh_.advertise<athena_transform::HomogeneousTransform>("/seline/est_world_frame", 1);
-  pub_est_eye_to_hand_frame_ = nh_.advertise<athena_transform::HomogeneousTransform>("/seline/est_eye_to_hand_frame", 1);
+  pub_est_world_frame_ = nh_.advertise<athena_msgs::HomogeneousTransform>("/seline/est_world_frame", 1);
+  pub_est_eye_to_hand_frame_ = nh_.advertise<athena_msgs::HomogeneousTransform>("/seline/est_eye_to_hand_frame", 1);
   pub_grasp_obj_marker_ = nh_.advertise<visualization_msgs::Marker>("/seline/grasped_obj_geometry", 1);
 
   sub_point_cloud_ = nh_.subscribe(point_cloud_topic_, 1, &Seline::inputCloudCallback, this);
@@ -407,7 +407,7 @@ pcl::PointCloud<pcl::PointXYZ> Seline::doIterativeRegistration(pcl::PointCloud<p
 
   // Only push out the homogenous transform if we're in calibrate mode
   if (seline_mode_ == "calibrate"){
-    athena_transform::HomogeneousTransform est_eye_to_hand_frame;
+    athena_msgs::HomogeneousTransform est_eye_to_hand_frame;
     est_eye_to_hand_frame.source_frame = camera_optical_frame_;
     est_eye_to_hand_frame.frame_id = manipulator_frame_;
     est_eye_to_hand_frame.transform = athena::conversions::toBoostArrayd(camera_to_icp_.matrix());
@@ -445,7 +445,7 @@ void Seline::processEstimatedTransformations(){
 
   // Only push out the homogeneous transform if we're in calibrate mode
   if (seline_mode_ == "calibrate"){
-    athena_transform::HomogeneousTransform est_world_frame;
+    athena_msgs::HomogeneousTransform est_world_frame;
     est_world_frame.source_frame = camera_optical_frame_;
     est_world_frame.frame_id = world_frame_;
     est_world_frame.transform = athena::conversions::toBoostArrayd(est_camera_to_world);
